@@ -26,16 +26,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 SPDX-License-Identifier: MIT
 *************************************************************************************************/
 
-#ifndef PLACA_H_
-#define PLACA_H_
+#ifndef BOARD_H_
+#define BOARD_H_
 
-/** @file placa.h
+/** @file bsp.h
  ** @brief
  **/
 
 /* === Headers files inclusions ==================================================================================== */
 
 #include "digital.h"
+#include "screen.h"
+#include <stdint.h>
 
 /* === Header for C++ compatibility ================================================================================ */
 
@@ -54,18 +56,15 @@ extern "C" {
  *
  */
 typedef struct board_s {
-    digital_output_t led_verde;
-    digital_output_t led_rojo;
-    digital_output_t led_amarillo;
-    digital_output_t led_rojo_rgb;
-    digital_output_t led_verde_rgb;
-    digital_output_t led_azul_rgb;
-
-    digital_input_t tecla_1;
-    digital_input_t tecla_2;
-    digital_input_t tecla_3;
-    digital_input_t tecla_4;
-} const * const board_t;
+    digital_output_t buzzer;
+    digital_input_t f1;
+    digital_input_t f2;
+    digital_input_t f3;
+    digital_input_t f4;
+    digital_input_t aceptar;
+    digital_input_t cancelar;
+    display_t display;
+} const * board_t;
 
 /* === Public variable declarations ================================================================================ */
 
@@ -85,4 +84,4 @@ board_t BoardCreate();
 }
 #endif
 
-#endif /* PLACA_H_ */
+#endif /* BOARD_H_ */

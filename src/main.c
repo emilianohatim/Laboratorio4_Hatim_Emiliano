@@ -1,23 +1,26 @@
-/************************************************************************************************
-Copyright (c) 2022-2023, Laboratorio de Microprocesadores
-Facultad de Ciencias Exactas y Tecnología, Universidad Nacional de Tucumán
-https://www.microprocesadores.unt.edu.ar/
+/*********************************************************************************************************************
+Copyright 2016-2026, Laboratorio de Microprocesadores
+Facultad de Ciencias Exactas y Tecnologia
+Universidad Nacional de Tucuman
+http://www.microprocesadores.unt.edu.ar/
 
-Copyright (c) 2022-2023, Esteban Volentini <evolentini@herrera.unt.edu.ar>
+Copyright 2016-2026, Emiliano Hatim <emilianohatim01@gmail.com>
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-associated documentation files (the "Software"), to deal in the Software without restriction,
-including without limitation the rights to use, copy, modify, merge, publish, distribute,
-sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all copies or substantial
-portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
-NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES
-OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 SPDX-License-Identifier: MIT
@@ -35,167 +38,90 @@ SPDX-License-Identifier: MIT
 #error "This program can only be compiled for the EDU-CIAA-NXP board"
 #endif
 
-#include "board.h"
-#include "chip.h"
 #include "digital.h"
-#include "placa.h"
+#include "bsp.h"
 #include <stdio.h>
 
 /* === Macros definitions ====================================================================== */
 
 /* === Private data type declarations ========================================================== */
 
-/**
- * @brief Enumeration with color sequence of RGB led
- */
-typedef enum rgb_color_e {
-    LED_RED_ON = 0,
-    LED_RED_OFF,
-    LED_GREEN_ON,
-    LED_GREEN_OFF,
-    LED_BLUE_ON,
-    LED_BLUE_OFF,
-} rgb_color_t;
-
 /* === Private variable declarations =========================================================== */
 
 /* === Private function declarations =========================================================== */
-
-/**
- * @brief Function to flash RGB led in sequence
- */
-static void FlashLed(board_t placa);
-
-/**
- * @brief Function to switch on and off a led with two keys
- */
-static void SwitchLed(board_t placa);
-
-/**
- * @brief Function to switch on and off a led with a single key
- */
-static void ToggleLed(board_t placa);
-
-/**
- * @brief Function to turn on a led while a key is pressed
- */
-static void TestLed(board_t placa);
-
-/**
- * @brief Function to generate a delay of approximately 100 ms
- */
-static void Delay(void);
 
 /* === Public variable definitions ============================================================= */
 
 /* === Private variable definitions ============================================================ */
 
+/**
+ * @brief Puntero global a la estructura de la placa
+ *
+ */
+static board_t board;
+
 /* === Private function implementation ========================================================= */
-
-/**
- * @brief Control de la secuencia de encendido y apagado de los LEDs del LED RGB
- *
- * @param placa Puntero al descriptor de hardware de la placa
- */
-static void FlashLed(board_t placa) {
-    static int divisor = 0;
-    static rgb_color_t state = LED_BLUE_OFF;
-
-    divisor++;
-    if (divisor == 5) {
-        divisor = 0;
-        state = (state + 1) % (LED_BLUE_OFF + 1);
-
-        switch (state) {
-        case LED_RED_ON:
-            DigitalOutputActivate(placa->led_rojo_rgb);
-            break;
-        case LED_GREEN_ON:
-            DigitalOutputActivate(placa->led_verde_rgb);
-            break;
-        case LED_BLUE_ON:
-            DigitalOutputActivate(placa->led_azul_rgb);
-            break;
-        default:
-            DigitalOutputDeactivate(placa->led_rojo_rgb);
-            DigitalOutputDeactivate(placa->led_verde_rgb);
-            DigitalOutputDeactivate(placa->led_azul_rgb);
-            break;
-        }
-    }
-}
-
-/**
- * @brief Controla el encendido y apagado de un led rojo con dos teclas
- *
- * @param placa Puntero al descriptor de hardware de la placa
- */
-static void SwitchLed(board_t placa) {
-    if (DigitalInputGetState(placa->tecla_1)) {
-        DigitalOutputActivate(placa->led_rojo);
-    }
-    if (DigitalInputGetState(placa->tecla_2)) {
-        DigitalOutputDeactivate(placa->led_rojo);
-    }
-}
-
-/**
- * @brief Controla la inversion del estado del led amarillo con una tecla
- *
- * @param placa Puntero al descriptor de hardware de la placa
- */
-static void ToggleLed(board_t placa) {
-    if (DigitalInputHasActivated(placa->tecla_3)) {
-        DigitalOutputToggle(placa->led_amarillo);
-    }
-}
-
-/**
- * @brief Testea el led verde con una tecla
- *
- * @param placa Puntero al descriptor de hardware de la placa
- */
-static void TestLed(board_t placa) {
-    if (DigitalInputGetState(placa->tecla_4)) {
-        DigitalOutputActivate(placa->led_verde);
-    } else {
-        DigitalOutputDeactivate(placa->led_verde);
-    }
-}
-
-/**
- * @brief Funcion que asigna un retardo al pulsar una tecla
- *
- */
-static void Delay(void) {
-    for (int index = 0; index < 100; index++) {
-        for (int delay = 0; delay < 25000; delay++) {
-            __asm("NOP");
-        }
-    }
-}
 
 /* === Public function implementation ========================================================== */
 
 /**
- * @brief Punto de entrada principal de la aplicación.
+ * @brief Función principal del programa
  *
- * Inicializa el descriptor de la placa y luego entra en el lazo infinito de control.
- * En cada iteración ejecuta las tareas secuenciales de actualización de LEDs y lectura de teclas
+ * Incializa el hardware de la placa y establece el valor inicial
+ * 4, 3, 2 y 1 en el display, entra a un bucle infinito donde corrobora el estado
+ * de las entradas digitales (teclas)
+ * Tecla aceptar: alterna la frecuencia de parpadeo de todos los digitos
+ * Tecla cancelar: Conmuta el encendido y apagado de los puntos decimales
+ * Teclas F1 a F4: Incrementan individualmente el valor del dígito correspondiente
  *
- * @return int
+ * Finalmente, se ejecuta un bucle de retardo por software junto con una función
+ * de refresco del display para mantener el multiplexado
+ *
  */
 int main(void) {
+    uint8_t entrada[4] = {4, 3, 2, 1};
+    uint16_t frecuencia = 0;
 
-    board_t placa = BoardCreate();
+    board = BoardCreate();
 
+    DisplayWriteBCD(board->display, entrada, sizeof(entrada));
     while (true) {
-        FlashLed(placa);
-        SwitchLed(placa);
-        ToggleLed(placa);
-        TestLed(placa);
+        if (DigitalInputHasActivated(board->aceptar)) {
+            if (frecuencia == 0) {
+                frecuencia = 100;
+            } else if (frecuencia == 100) {
+                frecuencia = 250;
+            } else {
+                frecuencia = 0;
+            }
+            DisplayFlashDigits(board->display, 0, 3, frecuencia);
+        }
+        if (DigitalInputHasActivated(board->cancelar)) {
+            DisplayToggleDots(board->display, 0, 3);
+        }
+        if (DigitalInputHasActivated(board->f1)) {
+            entrada[3] = (entrada[3] + 1) % 10;
+            DisplayWriteBCD(board->display, entrada, sizeof(entrada));
+        }
+        if (DigitalInputHasActivated(board->f2)) {
+            entrada[2] = (entrada[2] + 1) % 10;
+            DisplayWriteBCD(board->display, entrada, sizeof(entrada));
+        }
+        if (DigitalInputHasActivated(board->f3)) {
+            entrada[1] = (entrada[1] + 1) % 10;
+            DisplayWriteBCD(board->display, entrada, sizeof(entrada));
+        }
+        if (DigitalInputHasActivated(board->f4)) {
+            entrada[0] = (entrada[0] + 1) % 10;
+            DisplayWriteBCD(board->display, entrada, sizeof(entrada));
+        }
 
-        Delay();
+        for (int index = 0; index < 50; index++) {
+            for (int delay = 0; delay < 1000; delay++) {
+                __asm__("NOP");
+            }
+            DisplayRefresh(board->display);
+        }
     }
 
     return 0;
