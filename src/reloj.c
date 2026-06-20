@@ -36,20 +36,60 @@ SPDX-License-Identifier: MIT
 
 /* === Macros definitions ====================================================================== */
 
+#define UNITS_PER_TEN      10U
+#define SECONDS_PER_MINUTE 60U
+#define MINUTES_PER_HOUR   60U
+#define HOURS_PER_DAY      24U
+#define SECONDS_PER_DAY    (HOURS_PER_DAY * MINUTES_PER_HOUR * SECONDS_PER_MINUTE)
+
+#define HOUR_TENS          0
+#define HOUR_ONES          1
+#define MINUTE_TENS        2
+#define MINUTE_ONES        3
+#define SECOND_TENS        4
+#define SECOND_ONES        5
+
 /* === Private data type declarations ========================================================== */
 
 struct clock_s {
-    hora_t current_time;
+    uint32_t current_time;
+    uint16_t ticks_per_second;
+    uint16_t ticks_count;
     bool time_is_valid;
 };
 
 /* === Private function declarations =========================================================== */
+
+static uint32_t TimeToSeconds(const hora_t time);
+
+static void SecondsToTime(uint32_t seconds, hora_t time);
 
 /* === Private variable definitions ============================================================ */
 
 /* === Public variable definition  ============================================================= */
 
 /* === Private function definitions ============================================================ */
+
+static uint32_t TimeToSeconds(const hora_t time) {
+    uint32_t seconds = UNITS_PER_TEN * time[HOUR_TENS] + time[HOUR_ONES];
+    seconds = MINUTES_PER_HOUR * seconds + UNITS_PER_TEN * time[MINUTE_TENS] + time[MINUTE_ONES];
+    seconds = SECONDS_PER_MINUTE * seconds + UNITS_PER_TEN * time[SECOND_TENS] + time[SECOND_ONES];
+
+    return seconds;
+}
+
+static void SecondsToTime(uint32_t seconds, hora_t time) {
+    time[SECOND_ONES] = seconds % UNITS_PER_TEN;
+    time[SECOND_TENS] = (seconds / UNITS_PER_TEN) % (SECONDS_PER_MINUTE / UNITS_PER_TEN);
+    seconds = seconds / SECONDS_PER_MINUTE;
+
+    time[MINUTE_ONES] = seconds % UNITS_PER_TEN;
+    time[MINUTE_TENS] = (seconds / UNITS_PER_TEN) % (MINUTES_PER_HOUR / UNITS_PER_TEN);
+    seconds = seconds / MINUTES_PER_HOUR;
+
+    time[HOUR_ONES] = seconds % UNITS_PER_TEN;
+    time[HOUR_TENS] = seconds / UNITS_PER_TEN;
+}
 
 /* === Public function definitions ============================================================ */
 
@@ -60,19 +100,33 @@ clock_t ClockCreate(unsigned int ticks_per_second, void * alarm_handler) {
 
     clock_t self = &instancia;
     self->time_is_valid = false;
-    memset(self->current_time, 0, sizeof(hora_t));
+    self->ticks_per_second = ticks_per_second;
+    self->ticks_count = 0;
+    self->current_time = 0;
     return self;
 }
 
 bool ClockGetCurrentTime(clock_t self, hora_t current_time) {
-    memcpy(current_time, self->current_time, sizeof(hora_t));
+    SecondsToTime(self->current_time, current_time);
     return self->time_is_valid;
 }
 
-bool ClockSetupCurrentTime(clock_t self, hora_t current_time) {
-    memcpy(self->current_time, current_time, sizeof(hora_t));
+bool ClockSetupCurrentTime(clock_t self, const hora_t current_time) {
+    self->current_time = TimeToSeconds(current_time);
     self->time_is_valid = true;
     return true;
+}
+
+void ClockNewTick(clock_t self) {
+    self->ticks_count++;
+    if (self->ticks_count < self->ticks_per_second) {
+        return;
+    }
+    self->ticks_count = 0;
+    self->current_time++;
+    if (self->current_time >= SECONDS_PER_DAY) {
+        self->current_time = 0;
+    }
 }
 
 /* === End of documentation ==================================================================== */

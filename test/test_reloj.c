@@ -36,6 +36,15 @@ SPDX-License-Identifier: MIT
 
 /* === Macros definitions ====================================================================== */
 
+#define TICK_PER_SECOND 3
+#define ONE_SECOND      TICK_PER_SECOND
+#define TEN_SECONDS     (10 * ONE_SECOND)
+#define ONE_MINUTE      (6 * TEN_SECONDS)
+#define TEN_MINUTES     (10 * ONE_MINUTE)
+#define ONE_HOUR        (60 * ONE_MINUTE)
+#define TEN_HOURS       (10 * ONE_HOUR)
+#define ONE_DAY         (24 * ONE_HOUR)
+
 /* === Private data type declarations ========================================================== */
 
 /* === Private function declarations =========================================================== */
@@ -45,11 +54,17 @@ SPDX-License-Identifier: MIT
 /* === Public variable definition  ============================================================= */
 
 static const hora_t DEFAULT_TIME = {0, 0, 0, 0, 0, 0};
-static const hora_t INITIAL_TIME = {2, 3, 5, 9, 5, 9};
+static const hora_t INITIAL_TIME = {1, 2, 3, 4, 5, 6};
 
 /* === Public function definitions ============================================================ */
 
 /* === Private function definitions ============================================================ */
+
+void SimulateClockTicks(clock_t reloj, unsigned int ticks) {
+    for (int indice = 0; indice < ticks; indice++) {
+        ClockNewTick(reloj);
+    }
+}
 
 /**
  * @brief Inicialización del reloj en 00:00 y hora inválida
@@ -67,7 +82,7 @@ void test_reloj_hora_invalida_y_en_cero(void) {
 }
 
 /**
- * @brief Ajusta la hora el reloj queda en hora y es válida
+ * @brief Ajusta la hora el reloj y que pase a ser válido
  *
  * Segunda Prueba
  *
@@ -82,6 +97,104 @@ void test_ajuste_de_hora(void) {
     TEST_ASSERT_EQUAL_UINT8_ARRAY(INITIAL_TIME, hora_actual, 6);
 }
 
+/**
+ * @brief Despues de n ciclos de reloj la hora avanza un segundo
+ *
+ * Tercera Prueba
+ *
+ */
+void test_avanza_un_segundo(void) {
+    clock_t reloj;
+    hora_t hora_actual;
+    static const hora_t EXPECTED_TIME = {1, 2, 3, 4, 5, 7};
+
+    reloj = ClockCreate(TICK_PER_SECOND, NULL);
+    (void)ClockSetupCurrentTime(reloj, INITIAL_TIME);
+    SimulateClockTicks(reloj, ONE_SECOND);
+    ClockGetCurrentTime(reloj, hora_actual);
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(EXPECTED_TIME, hora_actual, 6);
+}
+
+/**
+ * @brief Despues de n ciclos de reloj la hora avanza diez segundos
+ *
+ *
+ *
+ */
+void test_avanza_diez_segundos(void) {
+    clock_t reloj;
+    hora_t hora_actual;
+    static const hora_t EXPECTED_TIME = {1, 2, 3, 5, 0, 6};
+
+    reloj = ClockCreate(TICK_PER_SECOND, NULL);
+    (void)ClockSetupCurrentTime(reloj, INITIAL_TIME);
+    SimulateClockTicks(reloj, TEN_SECONDS);
+    ClockGetCurrentTime(reloj, hora_actual);
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(EXPECTED_TIME, hora_actual, 6);
+}
+
+/**
+ * @brief Despues de n cilcos de reloj la hora avanza diez minutos
+ *
+ */
+void test_avanzo_diez_minutos(void) {
+    clock_t reloj;
+    hora_t hora_actual;
+    static const hora_t EXPECTED_TIME = {1, 2, 4, 4, 5, 6};
+
+    reloj = ClockCreate(TICK_PER_SECOND, NULL);
+    (void)ClockSetupCurrentTime(reloj, INITIAL_TIME);
+    SimulateClockTicks(reloj, TEN_MINUTES);
+    ClockGetCurrentTime(reloj, hora_actual);
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(EXPECTED_TIME, hora_actual, 6);
+}
+
+/**
+ * @brief Despues de n cilcos de reloj la hora avanza una hora
+ *
+ */
+void test_avanzo_una_hora(void) {
+    clock_t reloj;
+    hora_t hora_actual;
+    static const hora_t EXPECTED_TIME = {1, 3, 3, 4, 5, 6};
+
+    reloj = ClockCreate(TICK_PER_SECOND, NULL);
+    (void)ClockSetupCurrentTime(reloj, INITIAL_TIME);
+    SimulateClockTicks(reloj, ONE_HOUR);
+    ClockGetCurrentTime(reloj, hora_actual);
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(EXPECTED_TIME, hora_actual, 6);
+}
+
+/**
+ * @brief Despues de n cilcos de reloj la hora avanza diez horas
+ *
+ */
+void test_avanzo_diez_horas(void) {
+    clock_t reloj;
+    hora_t hora_actual;
+    static const hora_t EXPECTED_TIME = {2, 2, 3, 4, 5, 6};
+
+    reloj = ClockCreate(TICK_PER_SECOND, NULL);
+    (void)ClockSetupCurrentTime(reloj, INITIAL_TIME);
+    SimulateClockTicks(reloj, TEN_HOURS);
+    ClockGetCurrentTime(reloj, hora_actual);
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(EXPECTED_TIME, hora_actual, 6);
+}
+
+/**
+ * @brief Despues de n ciclos de reloj la hora avanza un día
+ *
+ */
+void test_avanzo_un_dia(void) {
+    clock_t reloj;
+    hora_t hora_actual;
+
+    reloj = ClockCreate(TICK_PER_SECOND, NULL);
+    (void)ClockSetupCurrentTime(reloj, INITIAL_TIME);
+    SimulateClockTicks(reloj, ONE_DAY);
+    ClockGetCurrentTime(reloj, hora_actual);
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(INITIAL_TIME, hora_actual, 6);
+}
 /* === Public function implementation ========================================================== */
 
 /* === End of documentation ==================================================================== */

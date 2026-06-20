@@ -60,7 +60,9 @@ clock_t ClockCreate(unsigned int ticks_per_second, void * alarm_handler);
 
 bool ClockGetCurrentTime(clock_t reloj, hora_t current_time);
 
-bool ClockSetupCurrentTime(clock_t reloj, hora_t current_time);
+bool ClockSetupCurrentTime(clock_t reloj, const hora_t current_time);
+
+void ClockNewTick(clock_t reloj);
 
 /* === End of conditional blocks =================================================================================== */
 
