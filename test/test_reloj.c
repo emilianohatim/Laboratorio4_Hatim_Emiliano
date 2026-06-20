@@ -44,7 +44,8 @@ SPDX-License-Identifier: MIT
 
 /* === Public variable definition  ============================================================= */
 
-static const hora_t INITIAL_TIME = {0, 0, 0, 0, 0, 0};
+static const hora_t DEFAULT_TIME = {0, 0, 0, 0, 0, 0};
+static const hora_t INITIAL_TIME = {2, 3, 5, 9, 5, 9};
 
 /* === Public function definitions ============================================================ */
 
@@ -59,11 +60,25 @@ static const hora_t INITIAL_TIME = {0, 0, 0, 0, 0, 0};
 void test_reloj_hora_invalida_y_en_cero(void) {
     clock_t reloj;
     hora_t hora_actual = {1, 2, 3, 4, 5, 6};
-    bool es_valida = true;
 
     reloj = ClockCreate(1, NULL);
-    es_valida = ClockGetCurrentTime(reloj, hora_actual);
-    TEST_ASSERT_FALSE(es_valida);
+    TEST_ASSERT_FALSE(ClockGetCurrentTime(reloj, hora_actual));
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(DEFAULT_TIME, hora_actual, 6);
+}
+
+/**
+ * @brief Ajusta la hora el reloj queda en hora y es válida
+ *
+ * Segunda Prueba
+ *
+ */
+void test_ajuste_de_hora(void) {
+    clock_t reloj;
+    hora_t hora_actual = {1, 2, 3, 4, 5, 6};
+
+    reloj = ClockCreate(1, NULL);
+    TEST_ASSERT_TRUE(ClockSetupCurrentTime(reloj, INITIAL_TIME));
+    TEST_ASSERT_TRUE(ClockGetCurrentTime(reloj, hora_actual));
     TEST_ASSERT_EQUAL_UINT8_ARRAY(INITIAL_TIME, hora_actual, 6);
 }
 

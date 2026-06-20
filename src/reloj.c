@@ -38,6 +38,11 @@ SPDX-License-Identifier: MIT
 
 /* === Private data type declarations ========================================================== */
 
+struct clock_s {
+    hora_t current_time;
+    bool time_is_valid;
+};
+
 /* === Private function declarations =========================================================== */
 
 /* === Private variable definitions ============================================================ */
@@ -51,11 +56,23 @@ SPDX-License-Identifier: MIT
 /* === Public function implementation ========================================================== */
 
 clock_t ClockCreate(unsigned int ticks_per_second, void * alarm_handler) {
+    static struct clock_s instancia;
+
+    clock_t self = &instancia;
+    self->time_is_valid = false;
+    memset(self->current_time, 0, sizeof(hora_t));
+    return self;
 }
 
-bool ClockGetCurrentTime(clock_t reloj, hora_t current_time) {
-    memset(current_time, 0, sizeof(hora_t));
-    return false;
+bool ClockGetCurrentTime(clock_t self, hora_t current_time) {
+    memcpy(current_time, self->current_time, sizeof(hora_t));
+    return self->time_is_valid;
+}
+
+bool ClockSetupCurrentTime(clock_t self, hora_t current_time) {
+    memcpy(self->current_time, current_time, sizeof(hora_t));
+    self->time_is_valid = true;
+    return true;
 }
 
 /* === End of documentation ==================================================================== */
