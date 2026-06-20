@@ -26,8 +26,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 SPDX-License-Identifier: MIT
 *************************************************************************************************/
 
-/** @file
- ** @brief
+/** @file screen.c
+ ** @brief Implementación de la abstracción de pantalla multiplexada de siete segmentos
  */
 /* === Headers files inclusions ================================================================ */
 
