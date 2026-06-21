@@ -148,6 +148,9 @@ bool ClockSetupCurrentTime(clock_t self, const hora_t current_time) {
 }
 
 void ClockNewTick(clock_t self) {
+    if (!self->time_is_valid) {
+        return;
+    }
     self->ticks_count++;
     if (self->ticks_count < self->ticks_per_second) {
         return;

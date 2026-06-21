@@ -346,4 +346,18 @@ void test_rechazar_hora_invalida(void){
 }
 /* === Public function implementation ========================================================== */
 
+/**
+ * @brief Verificar que un reloj desconfigurado no avance
+ *
+ * Undécima Prueba
+ *
+ */
+void test_reloj_desconfigurado_no_avanza(void){
+    clock_t reloj = ClockCreate(TICK_PER_SECOND, NULL);
+    hora_t hora_actual;
+
+    SimulateClockTicks(reloj, TEN_SECONDS);
+    TEST_ASSERT_FALSE(ClockGetCurrentTime(reloj, hora_actual));
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(DEFAULT_TIME, hora_actual, 6);
+}
 /* === End of documentation ==================================================================== */
