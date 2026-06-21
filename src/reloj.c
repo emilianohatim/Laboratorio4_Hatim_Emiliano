@@ -94,6 +94,27 @@ static void SecondsToTime(uint32_t seconds, hora_t time) {
     time[HOUR_TENS] = seconds / UNITS_PER_TEN;
 }
 
+static bool IsTimeValid(const hora_t time){
+    for(int i = 0; i < 6; i++){
+        if(time[i] > 9){
+            return false;
+        }
+    }
+    if(time[HOUR_TENS] > 2){
+        return false;
+    }
+    if(time[HOUR_TENS] == 2 && time[HOUR_ONES] > 3){
+        return false;
+    }
+    if(time[MINUTE_TENS] > 5){
+        return false;
+    }
+    if(time[SECOND_TENS] > 5){
+        return false;
+    }
+    return true;
+}
+
 /* === Public function definitions ============================================================ */
 
 /* === Public function implementation ========================================================== */
@@ -118,6 +139,9 @@ bool ClockGetCurrentTime(clock_t self, hora_t current_time) {
 }
 
 bool ClockSetupCurrentTime(clock_t self, const hora_t current_time) {
+    if (!IsTimeValid(current_time)) {
+        return false;
+    }
     self->current_time = TimeToSeconds(current_time);
     self->time_is_valid = true;
     return true;

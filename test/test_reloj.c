@@ -329,6 +329,21 @@ void test_crear_reloj_no_nulo(void){
     clock_t reloj = ClockCreate(TICK_PER_SECOND, NULL);
     TEST_ASSERT_NOT_NULL(reloj);
 }
+
+/**
+ * @brief Rechazar una hora inválida
+ *
+ * Décima Prueba
+ *
+ */
+void test_rechazar_hora_invalida(void){
+    clock_t reloj = ClockCreate(TICK_PER_SECOND, NULL);
+    hora_t hora_invalida_horas = {2, 5, 0, 0, 0, 0};
+    hora_t hora_invalida_minutos = {1, 2, 6, 0, 0, 0};
+
+    TEST_ASSERT_FALSE(ClockSetupCurrentTime(reloj, hora_invalida_horas));
+    TEST_ASSERT_FALSE(ClockSetupCurrentTime(reloj, hora_invalida_minutos));
+}
 /* === Public function implementation ========================================================== */
 
 /* === End of documentation ==================================================================== */
