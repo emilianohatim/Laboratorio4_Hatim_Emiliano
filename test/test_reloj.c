@@ -318,6 +318,17 @@ void test_hacer_sonar_alarma_y_cancelarla_hasta_el_otro_dia(void){
     SimulateClockTicks(reloj, ONE_DAY - ONE_SECOND);
     TEST_ASSERT_TRUE(alarma_activada);
 }
+
+/**
+ * @brief Crear un reloj y verificar que no sea nulo
+ *
+ * Novena Prueba
+ *
+ */
+void test_crear_reloj_no_nulo(void){
+    clock_t reloj = ClockCreate(TICK_PER_SECOND, NULL);
+    TEST_ASSERT_NOT_NULL(reloj);
+}
 /* === Public function implementation ========================================================== */
 
 /* === End of documentation ==================================================================== */
