@@ -53,9 +53,12 @@ SPDX-License-Identifier: MIT
 
 struct clock_s {
     uint32_t current_time;
+    uint32_t alarm_time;
     uint16_t ticks_per_second;
     uint16_t ticks_count;
     bool time_is_valid;
+    bool alarm_enabled;
+    clock_event_t alarm_handler;
 };
 
 /* === Private function declarations =========================================================== */
@@ -103,6 +106,9 @@ clock_t ClockCreate(unsigned int ticks_per_second, void * alarm_handler) {
     self->ticks_per_second = ticks_per_second;
     self->ticks_count = 0;
     self->current_time = 0;
+    self->alarm_time = 0;
+    self->alarm_handler = (clock_event_t)alarm_handler;
+    self->alarm_enabled = false;
     return self;
 }
 
@@ -127,6 +133,22 @@ void ClockNewTick(clock_t self) {
     if (self->current_time >= SECONDS_PER_DAY) {
         self->current_time = 0;
     }
+}
+
+void ClockSetupAlarm(clock_t self, const hora_t alarm_time){
+    self->alarm_time = TimeToSeconds(alarm_time);
+}
+
+void ClockGetAlarm(clock_t self, hora_t alarm_time){
+    SecondsToTime(self->alarm_time, alarm_time);
+}
+
+void ClockToggleAlarm(clock_t self){
+    self->alarm_enabled = !self->alarm_enabled;
+}
+
+bool ClockGetAlarmEnabled(clock_t self){
+    return self->alarm_enabled;
 }
 
 /* === End of documentation ==================================================================== */

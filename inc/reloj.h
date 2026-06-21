@@ -52,6 +52,8 @@ typedef struct clock_s * clock_t;
 
 typedef uint8_t hora_t[6];
 
+typedef void(*clock_event_t)(bool estado);
+
 /* === Public variable declarations ================================================================================ */
 
 /* === Public function declarations ================================================================================ */
@@ -63,6 +65,14 @@ bool ClockGetCurrentTime(clock_t reloj, hora_t current_time);
 bool ClockSetupCurrentTime(clock_t reloj, const hora_t current_time);
 
 void ClockNewTick(clock_t reloj);
+
+void ClockSetupAlarm(clock_t self, const hora_t alarm_time);
+
+void ClockGetAlarm(clock_t self, hora_t alarm_time);
+
+void ClockToggleAlarm(clock_t self);
+
+bool ClockGetAlarmEnabled(clock_t self);
 
 /* === End of conditional blocks =================================================================================== */
 

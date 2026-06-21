@@ -55,6 +55,7 @@ SPDX-License-Identifier: MIT
 
 static const hora_t DEFAULT_TIME = {0, 0, 0, 0, 0, 0};
 static const hora_t INITIAL_TIME = {1, 2, 3, 4, 5, 6};
+static const hora_t ALARM_TIME = {1, 2, 3, 5, 0, 0};
 
 /* === Public function definitions ============================================================ */
 
@@ -117,7 +118,6 @@ void test_avanza_un_segundo(void) {
 
 /**
  * @brief Despues de n ciclos de reloj la hora avanza diez segundos
- *
  *
  *
  */
@@ -194,6 +194,37 @@ void test_avanzo_un_dia(void) {
     SimulateClockTicks(reloj, ONE_DAY);
     ClockGetCurrentTime(reloj, hora_actual);
     TEST_ASSERT_EQUAL_UINT8_ARRAY(INITIAL_TIME, hora_actual, 6);
+}
+
+/**
+ * @brief Fijar una hora de alarma y consultarla
+ *
+ * Cuarta Prueba 
+ * 
+ */
+void test_fijar_y_consultar_hora_alarma(void){
+    clock_t reloj;
+    hora_t hora_seteada;
+
+    reloj = ClockCreate(TICK_PER_SECOND, NULL);
+    ClockSetupAlarm(reloj, ALARM_TIME);
+    ClockGetAlarm(reloj, hora_seteada);
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(ALARM_TIME, hora_seteada, 6);
+}
+
+/**
+ * @brief Habilitar y deshabilitar la alarma
+ *
+ */
+void test_alarma_habilitar_y_deshabilitar(void){
+    clock_t reloj;
+    reloj = ClockCreate(TICK_PER_SECOND, NULL);
+
+    TEST_ASSERT_FALSE(ClockGetAlarmEnabled(reloj));
+    ClockToggleAlarm(reloj);
+    TEST_ASSERT_TRUE(ClockGetAlarmEnabled(reloj));
+    ClockToggleAlarm(reloj);
+    TEST_ASSERT_FALSE(ClockGetAlarmEnabled(reloj));
 }
 /* === Public function implementation ========================================================== */
 
