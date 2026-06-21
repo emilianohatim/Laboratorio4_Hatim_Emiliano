@@ -156,4 +156,10 @@ bool ClockGetAlarmEnabled(clock_t self){
     return self->alarm_enabled;
 }
 
+void ClockPostponeAlarm(clock_t self, uint8_t minutos){
+    self->alarm_time += (minutos * SECONDS_PER_MINUTE);
+    if(self->alarm_time >= SECONDS_PER_DAY){
+        self->alarm_time = SECONDS_PER_DAY;
+    }
+}
 /* === End of documentation ==================================================================== */

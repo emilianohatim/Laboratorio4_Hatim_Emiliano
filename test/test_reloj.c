@@ -271,6 +271,29 @@ void test_fijar_alarma_deshabilitarla_y_avanzar_el_reloj_para_que_no_suene(void)
     TEST_ASSERT_FALSE(alarma_activada);
 }
 
+/**
+ * @brief Hacer sonar una alarma y posponerla
+ *
+ * Séptima Prueba
+ *
+ */
+void test_hacer_sonar_alarma_y_posponerla(void){
+    clock_t reloj;
+    alarma_activada = false;
+
+    reloj = ClockCreate(TICK_PER_SECOND, simulador_alarma);
+    ClockSetupCurrentTime(reloj, PRE_ALARM_TIME);
+    ClockSetupAlarm(reloj, ALARM_TIME);
+    ClockToggleAlarm(reloj); //habilito
+    SimulateClockTicks(reloj, ONE_SECOND);
+    TEST_ASSERT_TRUE(alarma_activada);
+    alarma_activada = false;
+    ClockPostponeAlarm(reloj, 5); //posponer 5 minutos
+    SimulateClockTicks(reloj, 5 * ONE_MINUTE - ONE_SECOND); //avanzo 5 minutos menos un segundo
+    TEST_ASSERT_FALSE(alarma_activada);
+    SimulateClockTicks(reloj, ONE_SECOND); //avanzo un segundo
+    TEST_ASSERT_TRUE(alarma_activada);
+}
 /* === Public function implementation ========================================================== */
 
 /* === End of documentation ==================================================================== */

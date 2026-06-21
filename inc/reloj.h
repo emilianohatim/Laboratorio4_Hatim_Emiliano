@@ -74,6 +74,9 @@ void ClockToggleAlarm(clock_t self);
 
 bool ClockGetAlarmEnabled(clock_t self);
 
+void ClockPostponeAlarm(clock_t self, uint8_t minutos);
+
+
 /* === End of conditional blocks =================================================================================== */
 
 #ifdef __cplusplus
