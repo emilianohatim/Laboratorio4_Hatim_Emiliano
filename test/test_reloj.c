@@ -251,6 +251,26 @@ void test_fijar_alarma_y_avanzar_hora_para_que_suene(void){
     SimulateClockTicks(reloj, ONE_SECOND);
     TEST_ASSERT_TRUE(alarma_activada);
 }
+
+/**
+ * @brief Fijar una alarma, deshabilitarla y avanzar el reloj para que no suene
+ *
+ * Sexta Prueba
+ *
+ */
+void test_fijar_alarma_deshabilitarla_y_avanzar_el_reloj_para_que_no_suene(void){
+    clock_t reloj;
+    alarma_activada = false;
+
+    reloj = ClockCreate(TICK_PER_SECOND, simulador_alarma);
+    ClockSetupCurrentTime(reloj, PRE_ALARM_TIME);
+    ClockSetupAlarm(reloj, ALARM_TIME);
+    ClockToggleAlarm(reloj); //habilito
+    ClockToggleAlarm(reloj); //deshabilito
+    SimulateClockTicks(reloj, ONE_SECOND);
+    TEST_ASSERT_FALSE(alarma_activada);
+}
+
 /* === Public function implementation ========================================================== */
 
 /* === End of documentation ==================================================================== */
