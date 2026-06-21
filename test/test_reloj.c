@@ -56,6 +56,9 @@ SPDX-License-Identifier: MIT
 static const hora_t DEFAULT_TIME = {0, 0, 0, 0, 0, 0};
 static const hora_t INITIAL_TIME = {1, 2, 3, 4, 5, 6};
 static const hora_t ALARM_TIME = {1, 2, 3, 5, 0, 0};
+static const hora_t PRE_ALARM_TIME = {1, 2, 3, 4, 5, 9};
+
+static bool alarma_activada;
 
 /* === Public function definitions ============================================================ */
 
@@ -65,6 +68,10 @@ void SimulateClockTicks(clock_t reloj, unsigned int ticks) {
     for (int indice = 0; indice < ticks; indice++) {
         ClockNewTick(reloj);
     }
+}
+
+void simulador_alarma(bool estado){
+    alarma_activada = estado;
 }
 
 /**
@@ -225,6 +232,24 @@ void test_alarma_habilitar_y_deshabilitar(void){
     TEST_ASSERT_TRUE(ClockGetAlarmEnabled(reloj));
     ClockToggleAlarm(reloj);
     TEST_ASSERT_FALSE(ClockGetAlarmEnabled(reloj));
+}
+
+/**
+ * @brief Fijar una alarma y avanzar la hora para que suene
+ *
+ * Quinta Prueba
+ * 
+ */
+void test_fijar_alarma_y_avanzar_hora_para_que_suene(void){
+    clock_t reloj;
+    alarma_activada = false;
+
+    reloj = ClockCreate(TICK_PER_SECOND, simulador_alarma);
+    ClockSetupCurrentTime(reloj, PRE_ALARM_TIME);
+    ClockSetupAlarm(reloj, ALARM_TIME);
+    ClockToggleAlarm(reloj);
+    SimulateClockTicks(reloj, ONE_SECOND);
+    TEST_ASSERT_TRUE(alarma_activada);
 }
 /* === Public function implementation ========================================================== */
 

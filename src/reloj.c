@@ -133,6 +133,11 @@ void ClockNewTick(clock_t self) {
     if (self->current_time >= SECONDS_PER_DAY) {
         self->current_time = 0;
     }
+    if (self->alarm_enabled && self->current_time == self->alarm_time){
+        if(self->alarm_enabled != NULL){
+            self->alarm_handler(true);
+        }
+    }
 }
 
 void ClockSetupAlarm(clock_t self, const hora_t alarm_time){
