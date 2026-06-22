@@ -70,7 +70,7 @@ void SimulateClockTicks(clock_t reloj, unsigned int ticks) {
     }
 }
 
-void simulador_alarma(bool estado){
+void simulador_alarma(bool estado) {
     alarma_activada = estado;
 }
 
@@ -206,10 +206,10 @@ void test_avanzo_un_dia(void) {
 /**
  * @brief Fijar una hora de alarma y consultarla
  *
- * Cuarta Prueba 
- * 
+ * Cuarta Prueba
+ *
  */
-void test_fijar_y_consultar_hora_alarma(void){
+void test_fijar_y_consultar_hora_alarma(void) {
     clock_t reloj;
     hora_t hora_seteada;
 
@@ -223,7 +223,7 @@ void test_fijar_y_consultar_hora_alarma(void){
  * @brief Habilitar y deshabilitar la alarma
  *
  */
-void test_alarma_habilitar_y_deshabilitar(void){
+void test_alarma_habilitar_y_deshabilitar(void) {
     clock_t reloj;
     reloj = ClockCreate(TICK_PER_SECOND, NULL);
 
@@ -238,9 +238,9 @@ void test_alarma_habilitar_y_deshabilitar(void){
  * @brief Fijar una alarma y avanzar la hora para que suene
  *
  * Quinta Prueba
- * 
+ *
  */
-void test_fijar_alarma_y_avanzar_hora_para_que_suene(void){
+void test_fijar_alarma_y_avanzar_hora_para_que_suene(void) {
     clock_t reloj;
     alarma_activada = false;
 
@@ -258,15 +258,15 @@ void test_fijar_alarma_y_avanzar_hora_para_que_suene(void){
  * Sexta Prueba
  *
  */
-void test_fijar_alarma_deshabilitarla_y_avanzar_el_reloj_para_que_no_suene(void){
+void test_fijar_alarma_deshabilitarla_y_avanzar_el_reloj_para_que_no_suene(void) {
     clock_t reloj;
     alarma_activada = false;
 
     reloj = ClockCreate(TICK_PER_SECOND, simulador_alarma);
     ClockSetupCurrentTime(reloj, PRE_ALARM_TIME);
     ClockSetupAlarm(reloj, ALARM_TIME);
-    ClockToggleAlarm(reloj); //habilito
-    ClockToggleAlarm(reloj); //deshabilito
+    ClockToggleAlarm(reloj); // habilito
+    ClockToggleAlarm(reloj); // deshabilito
     SimulateClockTicks(reloj, ONE_SECOND);
     TEST_ASSERT_FALSE(alarma_activada);
 }
@@ -277,21 +277,21 @@ void test_fijar_alarma_deshabilitarla_y_avanzar_el_reloj_para_que_no_suene(void)
  * Séptima Prueba
  *
  */
-void test_hacer_sonar_alarma_y_posponerla(void){
+void test_hacer_sonar_alarma_y_posponerla(void) {
     clock_t reloj;
     alarma_activada = false;
 
     reloj = ClockCreate(TICK_PER_SECOND, simulador_alarma);
     ClockSetupCurrentTime(reloj, PRE_ALARM_TIME);
     ClockSetupAlarm(reloj, ALARM_TIME);
-    ClockToggleAlarm(reloj); //habilito
+    ClockToggleAlarm(reloj); // habilito
     SimulateClockTicks(reloj, ONE_SECOND);
     TEST_ASSERT_TRUE(alarma_activada);
     alarma_activada = false;
-    ClockPostponeAlarm(reloj, 5); //posponer 5 minutos
-    SimulateClockTicks(reloj, 5 * ONE_MINUTE - ONE_SECOND); //avanzo 5 minutos menos un segundo
+    ClockPostponeAlarm(reloj, 5);                           // posponer 5 minutos
+    SimulateClockTicks(reloj, 5 * ONE_MINUTE - ONE_SECOND); // avanzo 5 minutos menos un segundo
     TEST_ASSERT_FALSE(alarma_activada);
-    SimulateClockTicks(reloj, ONE_SECOND); //avanzo un segundo
+    SimulateClockTicks(reloj, ONE_SECOND); // avanzo un segundo
     TEST_ASSERT_TRUE(alarma_activada);
 }
 
@@ -301,14 +301,14 @@ void test_hacer_sonar_alarma_y_posponerla(void){
  * Octava Prueba
  *
  */
-void test_hacer_sonar_alarma_y_cancelarla_hasta_el_otro_dia(void){
+void test_hacer_sonar_alarma_y_cancelarla_hasta_el_otro_dia(void) {
     clock_t reloj;
     alarma_activada = false;
-    
+
     reloj = ClockCreate(TICK_PER_SECOND, simulador_alarma);
     ClockSetupCurrentTime(reloj, PRE_ALARM_TIME);
     ClockSetupAlarm(reloj, ALARM_TIME);
-    ClockToggleAlarm(reloj); //habilito
+    ClockToggleAlarm(reloj); // habilito
     SimulateClockTicks(reloj, ONE_SECOND);
     TEST_ASSERT_TRUE(alarma_activada);
 
@@ -325,7 +325,7 @@ void test_hacer_sonar_alarma_y_cancelarla_hasta_el_otro_dia(void){
  * Novena Prueba
  *
  */
-void test_crear_reloj_no_nulo(void){
+void test_crear_reloj_no_nulo(void) {
     clock_t reloj = ClockCreate(TICK_PER_SECOND, NULL);
     TEST_ASSERT_NOT_NULL(reloj);
 }
@@ -336,7 +336,7 @@ void test_crear_reloj_no_nulo(void){
  * Décima Prueba
  *
  */
-void test_rechazar_hora_invalida(void){
+void test_rechazar_hora_invalida(void) {
     clock_t reloj = ClockCreate(TICK_PER_SECOND, NULL);
     hora_t hora_invalida_horas = {2, 5, 0, 0, 0, 0};
     hora_t hora_invalida_minutos = {1, 2, 6, 0, 0, 0};
@@ -352,7 +352,7 @@ void test_rechazar_hora_invalida(void){
  * Undécima Prueba
  *
  */
-void test_reloj_desconfigurado_no_avanza(void){
+void test_reloj_desconfigurado_no_avanza(void) {
     clock_t reloj = ClockCreate(TICK_PER_SECOND, NULL);
     hora_t hora_actual;
 
@@ -360,4 +360,30 @@ void test_reloj_desconfigurado_no_avanza(void){
     TEST_ASSERT_FALSE(ClockGetCurrentTime(reloj, hora_actual));
     TEST_ASSERT_EQUAL_UINT8_ARRAY(DEFAULT_TIME, hora_actual, 6);
 }
+
+/**
+ * @brief Verificar que al posponer y cancelar la alarma, esta suene en la hora original al dia siguiente y no la hora
+ * original sumada al valor pospuesta
+ *
+ * Doceava Prueba
+ *
+ */
+void test_posponer_alarma_cancelar_y_suena_hora_original_al_dia_siguiente(void) {
+    clock_t reloj;
+    alarma_activada = false;
+
+    reloj = ClockCreate(TICK_PER_SECOND, simulador_alarma);
+    ClockSetupCurrentTime(reloj, PRE_ALARM_TIME);
+    ClockSetupAlarm(reloj, ALARM_TIME);
+    ClockToggleAlarm(reloj);
+    SimulateClockTicks(reloj, ONE_SECOND);
+    ClockPostponeAlarm(reloj, 5);
+    SimulateClockTicks(reloj, ONE_SECOND);
+    alarma_activada = false;
+    SimulateClockTicks(reloj, ONE_DAY - (2 * ONE_SECOND));
+    alarma_activada = false;
+    SimulateClockTicks(reloj, ONE_SECOND);
+    TEST_ASSERT_TRUE(alarma_activada);
+}
+
 /* === End of documentation ==================================================================== */

@@ -54,10 +54,12 @@ SPDX-License-Identifier: MIT
 struct clock_s {
     uint32_t current_time;
     uint32_t alarm_time;
+    uint32_t postpone_time;
     uint16_t ticks_per_second;
     uint16_t ticks_count;
     bool time_is_valid;
     bool alarm_enabled;
+    bool is_postponed;
     clock_event_t alarm_handler;
 };
 
@@ -94,22 +96,22 @@ static void SecondsToTime(uint32_t seconds, hora_t time) {
     time[HOUR_TENS] = seconds / UNITS_PER_TEN;
 }
 
-static bool IsTimeValid(const hora_t time){
-    for(int i = 0; i < 6; i++){
-        if(time[i] > 9){
+static bool IsTimeValid(const hora_t time) {
+    for (int i = 0; i < 6; i++) {
+        if (time[i] > 9) {
             return false;
         }
     }
-    if(time[HOUR_TENS] > 2){
+    if (time[HOUR_TENS] > 2) {
         return false;
     }
-    if(time[HOUR_TENS] == 2 && time[HOUR_ONES] > 3){
+    if (time[HOUR_TENS] == 2 && time[HOUR_ONES] > 3) {
         return false;
     }
-    if(time[MINUTE_TENS] > 5){
+    if (time[MINUTE_TENS] > 5) {
         return false;
     }
-    if(time[SECOND_TENS] > 5){
+    if (time[SECOND_TENS] > 5) {
         return false;
     }
     return true;
@@ -130,6 +132,8 @@ clock_t ClockCreate(unsigned int ticks_per_second, void * alarm_handler) {
     self->alarm_time = 0;
     self->alarm_handler = (clock_event_t)alarm_handler;
     self->alarm_enabled = false;
+    self->is_postponed = false;
+    self->postpone_time = 0;
     return self;
 }
 
@@ -160,33 +164,39 @@ void ClockNewTick(clock_t self) {
     if (self->current_time >= SECONDS_PER_DAY) {
         self->current_time = 0;
     }
-    if (self->alarm_enabled && self->current_time == self->alarm_time){
-        if(self->alarm_enabled != NULL){
+    if (self->alarm_enabled && self->alarm_handler != NULL) {
+        if (self->current_time == self->alarm_time) {
             self->alarm_handler(true);
+            self->is_postponed = false;
+        } else if (self->is_postponed && self->current_time == self->postpone_time) {
+            self->alarm_handler(true);
+            self->is_postponed = false;
         }
     }
 }
 
-void ClockSetupAlarm(clock_t self, const hora_t alarm_time){
+void ClockSetupAlarm(clock_t self, const hora_t alarm_time) {
     self->alarm_time = TimeToSeconds(alarm_time);
+    self->is_postponed = false;
 }
 
-void ClockGetAlarm(clock_t self, hora_t alarm_time){
+void ClockGetAlarm(clock_t self, hora_t alarm_time) {
     SecondsToTime(self->alarm_time, alarm_time);
 }
 
-void ClockToggleAlarm(clock_t self){
+void ClockToggleAlarm(clock_t self) {
     self->alarm_enabled = !self->alarm_enabled;
 }
 
-bool ClockGetAlarmEnabled(clock_t self){
+bool ClockGetAlarmEnabled(clock_t self) {
     return self->alarm_enabled;
 }
 
-void ClockPostponeAlarm(clock_t self, uint8_t minutos){
-    self->alarm_time += (minutos * SECONDS_PER_MINUTE);
-    if(self->alarm_time >= SECONDS_PER_DAY){
-        self->alarm_time = SECONDS_PER_DAY;
+void ClockPostponeAlarm(clock_t self, uint8_t minutos) {
+    self->postpone_time = self->current_time + (minutos * SECONDS_PER_MINUTE);
+    if (self->postpone_time >= SECONDS_PER_DAY) {
+        self->postpone_time -= SECONDS_PER_DAY;
     }
+    self->is_postponed = true;
 }
 /* === End of documentation ==================================================================== */
