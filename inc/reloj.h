@@ -48,34 +48,107 @@ extern "C" {
 
 /* === Public data type declarations =============================================================================== */
 
+/**
+ * @brief Puntero a la estructura interna del reloj
+ *
+ */
 typedef struct clock_s * clock_t;
 
+/**
+ * @brief Arreglo para almacenar la hora en formato BCD
+ *
+ */
 typedef uint8_t hora_t[6];
 
-typedef void(*clock_event_t)(bool estado);
+/**
+ * @brief Puntero a función de callback para el evento de la alarma
+ * @param estado true si la alarma debe activarse o false en caso contrario
+ */
+typedef void (*clock_event_t)(bool estado);
 
 /* === Public variable declarations ================================================================================ */
 
 /* === Public function declarations ================================================================================ */
 
-clock_t ClockCreate(unsigned int ticks_per_second, void * alarm_handler);
+/**
+ * @brief Crea o inicializa una instancia del reloj
+ *
+ * @param ticks_per_second Cantidad de ticks físicos que equivalen a un segundo de reloj
+ * @param alarm_handler Puntero a la funcion que se ejecutará cuando la alarma deba sonar
+ * @return clock_t Puntero a la instancia del reloj creado
+ */
+clock_t ClockCreate(unsigned int ticks_per_second, clock_event_t alarm_handler);
 
+/**
+ * @brief Obtiene la hora actual del reloj
+ *
+ * @param reloj Puntero a la instancia del reloj
+ * @param current_time Arreglo donde se guardará la hora actual en formato BCD
+ * @return true Si la hora devuelta es válida
+ * @return false Si el reloj se encuentra desconfigurado
+ */
 bool ClockGetCurrentTime(clock_t reloj, hora_t current_time);
 
+/**
+ * @brief Configura la hora actual del reloj
+ *
+ * @param reloj Puntero a la instancia del reloj
+ * @param current_time Arreglo con la hora a configurar en formato BCD
+ * @return true Si la hora proporcionada es válida y se configura correctamente
+ * @return false Si la hora proporcionada tiene un formato inválido
+ */
 bool ClockSetupCurrentTime(clock_t reloj, const hora_t current_time);
 
+/**
+ * @brief Incrementa el contador interno de ticks del reloj
+ * se llama periódicamente
+ *
+ * @param reloj Puntero a la instancia del reloj
+ */
 void ClockNewTick(clock_t reloj);
 
-void ClockSetupAlarm(clock_t self, const hora_t alarm_time);
+/**
+ * @brief Configura la hora de la alarma
+ *
+ * @param self Puntero a la instancia del reloj
+ * @param alarm_time Arreglo con la hora de la alarma en formato BCD
+ * @return true Si la hora proporcionada es válida y se guardo correctamente
+ * @return false Si la hora proporcionada tiene un formato inválido
+ */
+bool ClockSetupAlarm(clock_t self, const hora_t alarm_time);
 
+/**
+ * @brief Obtiene la hora configurada actualmente para la alarma
+ *
+ * @param self Puntero a la instancia del reloj
+ * @param alarm_time Arreglo con la hora de la alarma en formato BCD
+ */
 void ClockGetAlarm(clock_t self, hora_t alarm_time);
 
+/**
+ * @brief Conmuta el estado de la alarma
+ * si esta deshabilitada, la habilita y viceversa
+ *
+ * @param self Puntero a la instancia del reloj
+ */
 void ClockToggleAlarm(clock_t self);
 
+/**
+ * @brief Consulta el estado actual de la alarma
+ *
+ * @param self Puntero a la instancia del reloj
+ * @return true Si la alarma esta habilitada
+ * @return false Si la alarma esta deshabilitada
+ */
 bool ClockGetAlarmEnabled(clock_t self);
 
+/**
+ * @brief Pospone la alarma una cantidad determinada de minutos
+ *
+ * @param self Puntero a la instancia del reloj
+ * @param minutos Cantidad de minutos a posponer la alarma a partir de la hora actual
+ */
 void ClockPostponeAlarm(clock_t self, uint8_t minutos);
-
 
 /* === End of conditional blocks =================================================================================== */
 

@@ -36,12 +36,20 @@ SPDX-License-Identifier: MIT
 
 /* === Macros definitions ====================================================================== */
 
+/**
+ * @brief Constantes para conversiones matemáticas de tiempo
+ *
+ */
 #define UNITS_PER_TEN      10U
 #define SECONDS_PER_MINUTE 60U
 #define MINUTES_PER_HOUR   60U
 #define HOURS_PER_DAY      24U
 #define SECONDS_PER_DAY    (HOURS_PER_DAY * MINUTES_PER_HOUR * SECONDS_PER_MINUTE)
 
+/**
+ * @brief Indices del arreglo BCD para identificar las posiciones del tiempo
+ *
+ */
 #define HOUR_TENS          0
 #define HOUR_ONES          1
 #define MINUTE_TENS        2
@@ -51,23 +59,48 @@ SPDX-License-Identifier: MIT
 
 /* === Private data type declarations ========================================================== */
 
+/**
+ * @brief Estructura de datos interna del reloj
+ *
+ */
 struct clock_s {
-    uint32_t current_time;
-    uint32_t alarm_time;
-    uint32_t postpone_time;
-    uint16_t ticks_per_second;
-    uint16_t ticks_count;
-    bool time_is_valid;
-    bool alarm_enabled;
-    bool is_postponed;
-    clock_event_t alarm_handler;
+    uint32_t current_time;       /**< Hora actual en segundos desde la medianoche */
+    uint32_t alarm_time;         /**< Hora de la alarma en segundos desde la medianoche*/
+    uint32_t postpone_time;      /**< Hora de la alarma pospuesta en segundos */
+    uint16_t ticks_per_second;   /**< Cantidad de ticks físicos por cada segundo real */
+    uint16_t ticks_count;        /**< Contador interno de ticks transcurridos */
+    bool time_is_valid;          /**< Bandera que indica si el reloj fue puesto en hora */
+    bool alarm_enabled;          /**< Bandera que indica si la alarma esta habilitada */
+    bool is_postponed;           /**< Bandera que indica si la alarma se encuentra en modo snooze */
+    clock_event_t alarm_handler; /**< Puntero a la función de callback para ejecutar la alarma */
 };
 
 /* === Private function declarations =========================================================== */
 
+/**
+ * @brief Convierte un arreglo BCD de 6 bytes a segundos totales
+ *
+ * @param time Arreglo con la hora en formato BCD
+ * @return uint32_t Cantidad de segundos transcurridos desde las 00:00:00
+ */
 static uint32_t TimeToSeconds(const hora_t time);
 
+/**
+ * @brief Convierte una cantidad de segundos totales a un arreglo BCD
+ *
+ * @param seconds Cantidad de segundos desde las 00:00:00
+ * @param time Arreglo donde se guardará la conversion en formato BCD
+ */
 static void SecondsToTime(uint32_t seconds, hora_t time);
+
+/**
+ * @brief Verifica si un arreglo BCD contiene una hora válida
+ *
+ * @param time Arreglo con la hora en formato BCD a evaluar
+ * @return true Si el formato y los rangos (00:00:00 y 23:59:59) son correctos
+ * @return false Si algun digito o limite de horas/minutos/segundos es inválido
+ */
+static bool IsTimeValid(const hora_t time);
 
 /* === Private variable definitions ============================================================ */
 
@@ -121,7 +154,7 @@ static bool IsTimeValid(const hora_t time) {
 
 /* === Public function implementation ========================================================== */
 
-clock_t ClockCreate(unsigned int ticks_per_second, void * alarm_handler) {
+clock_t ClockCreate(unsigned int ticks_per_second, clock_event_t alarm_handler) {
     static struct clock_s instancia;
 
     clock_t self = &instancia;
@@ -175,9 +208,13 @@ void ClockNewTick(clock_t self) {
     }
 }
 
-void ClockSetupAlarm(clock_t self, const hora_t alarm_time) {
+bool ClockSetupAlarm(clock_t self, const hora_t alarm_time) {
+    if (!IsTimeValid(alarm_time)) {
+        return false;
+    }
     self->alarm_time = TimeToSeconds(alarm_time);
     self->is_postponed = false;
+    return true;
 }
 
 void ClockGetAlarm(clock_t self, hora_t alarm_time) {

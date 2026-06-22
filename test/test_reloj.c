@@ -36,6 +36,10 @@ SPDX-License-Identifier: MIT
 
 /* === Macros definitions ====================================================================== */
 
+/**
+ * @brief Constantes de tiempo simulado para las pruebas
+ *
+ */
 #define TICK_PER_SECOND 3
 #define ONE_SECOND      TICK_PER_SECOND
 #define TEN_SECONDS     (10 * ONE_SECOND)
@@ -53,23 +57,45 @@ SPDX-License-Identifier: MIT
 
 /* === Public variable definition  ============================================================= */
 
+/**
+ * @brief Tiempos predefinidos en formato BCD para inyectar en las pruebas
+ *
+ */
 static const hora_t DEFAULT_TIME = {0, 0, 0, 0, 0, 0};
 static const hora_t INITIAL_TIME = {1, 2, 3, 4, 5, 6};
 static const hora_t ALARM_TIME = {1, 2, 3, 5, 0, 0};
 static const hora_t PRE_ALARM_TIME = {1, 2, 3, 4, 5, 9};
+static const hora_t LIMITE_DIA = {2, 3, 5, 9, 5, 9};
+static const hora_t NEW_ALARM = {1, 5, 0, 0, 0, 0};
+static const hora_t POST_ALARM_TIME = {1, 2, 3, 5, 0, 5};
 
+/**
+ * @brief Variable para comprobar si el callback de la alarma fue ejecutado
+ *
+ */
 static bool alarma_activada;
 
 /* === Public function definitions ============================================================ */
 
 /* === Private function definitions ============================================================ */
 
+/**
+ * @brief Funcion auxiliar para simular el paso del tiempo fisico inyectando multiples ticks
+ *
+ * @param reloj Instancia del reloj a simular
+ * @param ticks Cantidad total de ticks a inyectar
+ */
 void SimulateClockTicks(clock_t reloj, unsigned int ticks) {
     for (int indice = 0; indice < ticks; indice++) {
         ClockNewTick(reloj);
     }
 }
 
+/**
+ * @brief Funcion de callback que simula el encendido/apagado del hardware de la alarma
+ *
+ * @param estado Valor enviado por el reloj (true enciende, false para apagar)
+ */
 void simulador_alarma(bool estado) {
     alarma_activada = estado;
 }
@@ -265,8 +291,8 @@ void test_fijar_alarma_deshabilitarla_y_avanzar_el_reloj_para_que_no_suene(void)
     reloj = ClockCreate(TICK_PER_SECOND, simulador_alarma);
     ClockSetupCurrentTime(reloj, PRE_ALARM_TIME);
     ClockSetupAlarm(reloj, ALARM_TIME);
-    ClockToggleAlarm(reloj); // habilito
-    ClockToggleAlarm(reloj); // deshabilito
+    ClockToggleAlarm(reloj);
+    ClockToggleAlarm(reloj);
     SimulateClockTicks(reloj, ONE_SECOND);
     TEST_ASSERT_FALSE(alarma_activada);
 }
@@ -284,14 +310,14 @@ void test_hacer_sonar_alarma_y_posponerla(void) {
     reloj = ClockCreate(TICK_PER_SECOND, simulador_alarma);
     ClockSetupCurrentTime(reloj, PRE_ALARM_TIME);
     ClockSetupAlarm(reloj, ALARM_TIME);
-    ClockToggleAlarm(reloj); // habilito
+    ClockToggleAlarm(reloj);
     SimulateClockTicks(reloj, ONE_SECOND);
     TEST_ASSERT_TRUE(alarma_activada);
     alarma_activada = false;
-    ClockPostponeAlarm(reloj, 5);                           // posponer 5 minutos
-    SimulateClockTicks(reloj, 5 * ONE_MINUTE - ONE_SECOND); // avanzo 5 minutos menos un segundo
+    ClockPostponeAlarm(reloj, 5);
+    SimulateClockTicks(reloj, 5 * ONE_MINUTE - ONE_SECOND);
     TEST_ASSERT_FALSE(alarma_activada);
-    SimulateClockTicks(reloj, ONE_SECOND); // avanzo un segundo
+    SimulateClockTicks(reloj, ONE_SECOND);
     TEST_ASSERT_TRUE(alarma_activada);
 }
 
@@ -308,7 +334,7 @@ void test_hacer_sonar_alarma_y_cancelarla_hasta_el_otro_dia(void) {
     reloj = ClockCreate(TICK_PER_SECOND, simulador_alarma);
     ClockSetupCurrentTime(reloj, PRE_ALARM_TIME);
     ClockSetupAlarm(reloj, ALARM_TIME);
-    ClockToggleAlarm(reloj); // habilito
+    ClockToggleAlarm(reloj);
     SimulateClockTicks(reloj, ONE_SECOND);
     TEST_ASSERT_TRUE(alarma_activada);
 
@@ -386,4 +412,65 @@ void test_posponer_alarma_cancelar_y_suena_hora_original_al_dia_siguiente(void) 
     TEST_ASSERT_TRUE(alarma_activada);
 }
 
+/**
+ * @brief Probar que la alarma rechaza una hora inválida
+ *
+ * Pruebas Extras
+ *
+ */
+void test_rechazar_hora_alarma_invalida(void) {
+    clock_t reloj = ClockCreate(TICK_PER_SECOND, simulador_alarma);
+    hora_t hora_invalida = {2, 5, 0, 0, 0, 0};
+    TEST_ASSERT_FALSE(ClockSetupAlarm(reloj, hora_invalida));
+}
+
+/**
+ * @brief Probar la transicion exacta de la medianoche
+ *
+ */
+void test_transicion_exacta_medianoche(void) {
+    clock_t reloj = ClockCreate(TICK_PER_SECOND, NULL);
+    hora_t hora_actual;
+
+    ClockSetupCurrentTime(reloj, LIMITE_DIA);
+    SimulateClockTicks(reloj, ONE_SECOND);
+    ClockGetCurrentTime(reloj, hora_actual);
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(DEFAULT_TIME, hora_actual, 6);
+}
+
+/**
+ * @brief Modificar la alarma mientras esta en snooze y se la cancela
+ *
+ */
+void test_modificar_alarma_durante_snooze_cancela_snooze(void) {
+    clock_t reloj;
+    alarma_activada = false;
+    reloj = ClockCreate(TICK_PER_SECOND, simulador_alarma);
+    ClockSetupCurrentTime(reloj, PRE_ALARM_TIME);
+    ClockSetupAlarm(reloj, ALARM_TIME);
+    ClockToggleAlarm(reloj);
+
+    SimulateClockTicks(reloj, ONE_SECOND);
+    ClockPostponeAlarm(reloj, 5);
+    alarma_activada = false;
+    ClockSetupAlarm(reloj, NEW_ALARM);
+    SimulateClockTicks(reloj, (5 * ONE_MINUTE) - ONE_SECOND);
+    TEST_ASSERT_FALSE(alarma_activada);
+}
+
+/**
+ * @brief Test de salto manual del tiempo que no produce la activación de la alarma
+ *
+ */
+void test_salto_temporal_no_dispara_alarma(void) {
+    clock_t reloj;
+    alarma_activada = false;
+
+    reloj = ClockCreate(TICK_PER_SECOND, simulador_alarma);
+    ClockSetupCurrentTime(reloj, PRE_ALARM_TIME);
+    ClockSetupAlarm(reloj, ALARM_TIME);
+    ClockToggleAlarm(reloj);
+    ClockSetupCurrentTime(reloj, POST_ALARM_TIME);
+    TEST_ASSERT_FALSE(alarma_activada);
+}
 /* === End of documentation ==================================================================== */
