@@ -343,4 +343,9 @@ board_t BoardCreate(void) {
     return &board;
 }
 
+void BoardSysTickInit(uint32_t tick_rate_hz) {
+    SystemCoreClockUpdate();
+    SysTick_Config(SystemCoreClock / tick_rate_hz);
+}
+
 /* === End of documentation ==================================================================== */

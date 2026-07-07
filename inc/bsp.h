@@ -56,14 +56,14 @@ extern "C" {
  *
  */
 typedef struct board_s {
-    digital_output_t buzzer;
-    digital_input_t f1;
-    digital_input_t f2;
-    digital_input_t f3;
-    digital_input_t f4;
-    digital_input_t aceptar;
-    digital_input_t cancelar;
-    display_t display;
+    digital_output_t buzzer;  /**< Salida digital conectada al buzzer */
+    digital_input_t f1;       /**< Entrada digital conectada al boton F1 */
+    digital_input_t f2;       /**< Entrada digital conectada al boton F2 */
+    digital_input_t f3;       /**< Entrada digital conectada al boton F3 */
+    digital_input_t f4;       /**< Entrada digital conectada al boton F4 */
+    digital_input_t aceptar;  /**< Entrada digital conectada al boton de Aceptar */
+    digital_input_t cancelar; /**< Entrada digital conectada al boton de Cancelar */
+    display_t display;        /**< Instancia del controlador de pantalla (display multiplexado) */
 } const * board_t;
 
 /* === Public variable declarations ================================================================================ */
@@ -77,6 +77,13 @@ typedef struct board_s {
  * @return board_t Puntero constante al objeto de la placa
  */
 board_t BoardCreate();
+
+/**
+ * @brief Configura interrupci+on periódica del sistema
+ *
+ * @param tick_rate_hz frecuencia de interrupción deseada en Hz
+ */
+void BoardSysTickInit(uint32_t tick_rate_hz);
 
 /* === End of conditional blocks =================================================================================== */
 
