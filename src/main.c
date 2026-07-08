@@ -42,12 +42,14 @@ SPDX-License-Identifier: MIT
 #include "reloj.h"
 #include <stdio.h>
 #include <stdbool.h>
+#include <string.h>
 
 /* === Macros definitions ====================================================================== */
 
-#define TICK_RATE_HZ 1000 /**< frecuencia del systick */
-#define TICKS_3_SEG  3000
-#define TICKS_30_SEG 30000
+#define TICK_RATE_HZ    1000 /**< frecuencia del systick */
+#define TIEMPO_F1_LARGO 3000
+#define TIEMPO_F2_LARGO 3000
+#define TIEMPO_TIMEOUT  30000
 
 /* === Private data type declarations ========================================================== */
 
@@ -58,26 +60,73 @@ typedef enum {
     AJUSTANDO_HORAS_RELOJ,    /**< parpadean horas */
     AJUSTANDO_MINUTOS_ALARMA, /**< F2 presionado, puntos encendidos de todos los digitos */
     AJUSTANDO_HORAS_ALARMA,   /**< parpadean horas */
-    ALARMA_SONANDO            /**< Suena el buzzer esperando aceptar o cancelar */
-} modo_reloj_t;
+    ALARMA                    /**< Suena el buzzer esperando aceptar o cancelar */
+} estado_t;
+
+typedef enum { NINGUNO, F1_LARGA, F2_LARGA, F3, F4, ACEPTAR, CANCELAR } evento_t;
 
 /* === Private variable declarations =========================================================== */
 
 /* === Private function declarations =========================================================== */
 
+void ActualizarDisplay(void);
+
+void ActualizarFSM(void);
+
+void MostrarHora(void);
+
+void EstadoSinConfigurar(void);
+
+void EstadoMostrarHora(void);
+
+void EstadoAjustarMinutos(void);
+
+void EstadoAjustarHoras(void);
+
+void EstadoAjustarMinutosAlarma(void);
+
+void EstadoAjustarHorasAlarma(void);
+
+void EstadoAlarma(void);
+
+void CambiarEstado(estado_t nuevo_estado);
+
+evento_t ObtenerEvento(void);
+
+void CopiarHoraActual(void);
+
+void IncrementarMinutos(hora_t hora);
+
+void DecrementarMinutos(hora_t hora);
+
+void IncrementarHoras(hora_t hora);
+
+void DecrementarHoras(hora_t hora);
+
+void ManejadorAlarma(bool estado);
+
+void SetPunto(uint8_t digito, bool encendido);
+
 /* === Public variable definitions ============================================================= */
 
 board_t placa;
 clock_t reloj;
-modo_reloj_t modo_actual = RELOJ_SIN_CONFIGURAR;
+estado_t estado_actual = RELOJ_SIN_CONFIGURAR;
+evento_t evento_actual = NINGUNO;
 
-uint32_t contador_inactividad = 0; /**< Descarta cambios a los 30 seg */
-uint32_t contador_tecla_f1 = 0;    /**< Mide 3 seg de la tecla f1 presionada */
-uint32_t contador_tecla_f2 = 0;    /**< MIde 3 seg de la tecla f2 presionada */
-uint32_t divisor_segundos = 0;     /**< */
-int frecuencia = 500;
+uint32_t contador_f1 = 0;
+uint32_t contador_f2 = 0;
+uint32_t contador_inactividad = 0;
+uint16_t contador_parpadeo = 0;
+uint8_t display[4];
 
+bool estado_puntos[4] = {false, false, false, false};
+bool alarma_cancelada = false;
+bool alarma_sonando = false;
+
+hora_t hora_actual;
 hora_t hora_temporal = {0, 0, 0, 0, 0, 0};
+hora_t hora_alarma;
 
 /* === Private variable definitions ============================================================ */
 
@@ -85,48 +134,415 @@ hora_t hora_temporal = {0, 0, 0, 0, 0, 0};
 
 void SysTick_Handler(void) {
     DisplayRefresh(placa->display);
-
     ClockNewTick(reloj);
 
-    divisor_segundos++;
-    if (divisor_segundos >= (TICK_RATE_HZ / 2)) {
-        divisor_segundos = 0;
-        if (modo_actual == MOSTRANDO_HORA) {
-            DisplayToggleDots(placa->display, 1, 1);
-        }
-    }
-
     if (DigitalInputGetState(placa->f1)) {
-        contador_tecla_f1++;
+        if (contador_f1 < TIEMPO_F1_LARGO) {
+            contador_f1++;
+        }
+        if (contador_f1 == TIEMPO_F1_LARGO) {
+            evento_actual = F1_LARGA;
+            contador_f1++;
+        }
     } else {
-        contador_tecla_f1 = 0;
+        contador_f1 = 0;
     }
 
     if (DigitalInputGetState(placa->f2)) {
-        contador_tecla_f2++;
+        if (contador_f2 < TIEMPO_F2_LARGO) {
+            contador_f2++;
+        }
+        if (contador_f2 == TIEMPO_F2_LARGO) {
+            evento_actual = F2_LARGA;
+            contador_f2++;
+        }
     } else {
-        contador_tecla_f2 = 0;
+        contador_f2 = 0;
     }
+
+    contador_parpadeo++;
+    if (contador_parpadeo >= 500) {
+        contador_parpadeo = 0;
+        if (estado_actual == MOSTRANDO_HORA) {
+            SetPunto(1, !estado_puntos[1]);
+        }
+    }
+
     contador_inactividad++;
 }
 
-void ManejadorAlarma(bool estado) {
-    if (estado) {
-        modo_actual = ALARMA_SONANDO;
-        DigitalOutputActivate(placa->buzzer);
-    } else {
-        DigitalOutputDeactivate(placa->buzzer);
+void ActualizarDisplay(void) {
+    switch (estado_actual) {
+    case RELOJ_SIN_CONFIGURAR: {
+        display[0] = 0;
+        display[1] = 0;
+        display[2] = 0;
+        display[3] = 0;
+        DisplayWriteBCD(placa->display, display, sizeof(display));
+        break;
     }
+    case MOSTRANDO_HORA: {
+        MostrarHora();
+        break;
+    }
+    case AJUSTANDO_MINUTOS_RELOJ:
+    case AJUSTANDO_HORAS_RELOJ:
+    case AJUSTANDO_MINUTOS_ALARMA:
+    case AJUSTANDO_HORAS_ALARMA: {
+        display[0] = hora_temporal[0];
+        display[1] = hora_temporal[1];
+        display[2] = hora_temporal[2];
+        display[3] = hora_temporal[3];
+        DisplayWriteBCD(placa->display, display, sizeof(display));
+        break;
+    }
+    default: {
+        break;
+    }
+    }
+}
+
+void ActualizarFSM(void) {
+    switch (estado_actual) {
+    case RELOJ_SIN_CONFIGURAR: {
+        EstadoSinConfigurar();
+        break;
+    }
+    case MOSTRANDO_HORA: {
+        EstadoMostrarHora();
+        break;
+    }
+    case AJUSTANDO_MINUTOS_RELOJ: {
+        EstadoAjustarMinutos();
+        break;
+    }
+    case AJUSTANDO_HORAS_RELOJ: {
+        EstadoAjustarHoras();
+        break;
+    }
+    case AJUSTANDO_MINUTOS_ALARMA: {
+        EstadoAjustarMinutosAlarma();
+        break;
+    }
+    case AJUSTANDO_HORAS_ALARMA: {
+        EstadoAjustarHorasAlarma();
+        break;
+    }
+    case ALARMA: {
+        EstadoAlarma();
+        break;
+    }
+    default: {
+        break;
+    }
+    }
+}
+
+void MostrarHora(void) {
+    if (ClockGetCurrentTime(reloj, hora_actual)) {
+        display[0] = hora_actual[0];
+        display[1] = hora_actual[1];
+        display[2] = hora_actual[2];
+        display[3] = hora_actual[3];
+        DisplayWriteBCD(placa->display, display, sizeof(display));
+    }
+    if (hora_actual[0] == 0 && hora_actual[1] == 0 && hora_actual[2] == 0 && hora_actual[3] == 0 &&
+        hora_actual[4] == 0 && hora_actual[5] == 0) {
+        alarma_cancelada = false;
+    }
+}
+
+void EstadoSinConfigurar(void) {
+    if (ObtenerEvento() == F1_LARGA) {
+        memset(hora_temporal, 0, sizeof(hora_temporal));
+        CambiarEstado(AJUSTANDO_MINUTOS_RELOJ);
+    }
+}
+
+void EstadoMostrarHora(void) {
+    if (alarma_sonando) {
+        alarma_sonando = false;
+        CambiarEstado(ALARMA);
+        return;
+    }
+    switch (ObtenerEvento()) {
+    case F1_LARGA: {
+        CopiarHoraActual();
+        CambiarEstado(AJUSTANDO_MINUTOS_RELOJ);
+        break;
+    }
+    case F2_LARGA: {
+        ClockGetAlarm(reloj, hora_temporal);
+        CambiarEstado(AJUSTANDO_MINUTOS_ALARMA);
+        break;
+    }
+    case ACEPTAR: {
+        if (!ClockGetAlarmEnabled(reloj)) {
+            ClockToggleAlarm(reloj);
+        }
+        SetPunto(3, true);
+        break;
+    }
+    case CANCELAR: {
+        if (ClockGetAlarmEnabled(reloj)) {
+            ClockToggleAlarm(reloj);
+        }
+        SetPunto(3, false);
+        break;
+    }
+    default: {
+        break;
+    }
+    }
+}
+
+void EstadoAjustarMinutos(void) {
+    switch (ObtenerEvento()) {
+    case F3: {
+        DecrementarMinutos(hora_temporal);
+        contador_inactividad = 0;
+        break;
+    }
+    case F4: {
+        IncrementarMinutos(hora_temporal);
+        contador_inactividad = 0;
+        break;
+    }
+    case ACEPTAR: {
+        CambiarEstado(AJUSTANDO_HORAS_RELOJ);
+        break;
+    }
+    case CANCELAR: {
+        if (ClockGetCurrentTime(reloj, hora_actual)) {
+            CambiarEstado(MOSTRANDO_HORA);
+        } else {
+            CambiarEstado(RELOJ_SIN_CONFIGURAR);
+        }
+        break;
+    }
+    default: {
+        break;
+    }
+    }
+    if (contador_inactividad >= TIEMPO_TIMEOUT) {
+        if (ClockGetCurrentTime(reloj, hora_actual)) {
+            CambiarEstado(MOSTRANDO_HORA);
+        } else {
+            CambiarEstado(RELOJ_SIN_CONFIGURAR);
+        }
+    }
+}
+
+void EstadoAjustarHoras(void) {
+    switch (ObtenerEvento()) {
+    case F3: {
+        DecrementarHoras(hora_temporal);
+        contador_inactividad = 0;
+        break;
+    }
+    case F4: {
+        IncrementarHoras(hora_temporal);
+        contador_inactividad = 0;
+        break;
+    }
+    case ACEPTAR: {
+        ClockSetupCurrentTime(reloj, hora_temporal);
+        CambiarEstado(MOSTRANDO_HORA);
+        break;
+    }
+    case CANCELAR: {
+        if (ClockGetCurrentTime(reloj, hora_actual)) {
+            CambiarEstado(MOSTRANDO_HORA);
+        } else {
+            CambiarEstado(RELOJ_SIN_CONFIGURAR);
+        }
+        break;
+    }
+    default: {
+        break;
+    }
+    }
+    if (contador_inactividad >= TIEMPO_TIMEOUT) {
+        if (ClockGetCurrentTime(reloj, hora_actual)) {
+            CambiarEstado(MOSTRANDO_HORA);
+        } else {
+            CambiarEstado(RELOJ_SIN_CONFIGURAR);
+        }
+    }
+}
+
+void EstadoAjustarMinutosAlarma(void) {
+    switch (ObtenerEvento()) {
+    case F3: {
+        DecrementarMinutos(hora_temporal);
+        contador_inactividad = 0;
+        break;
+    }
+    case F4: {
+        IncrementarMinutos(hora_temporal);
+        contador_inactividad = 0;
+        break;
+    }
+    case ACEPTAR: {
+        CambiarEstado(AJUSTANDO_HORAS_ALARMA);
+        break;
+    }
+    case CANCELAR: {
+        CambiarEstado(MOSTRANDO_HORA);
+        break;
+    }
+    default: {
+        break;
+    }
+    }
+    if (contador_inactividad >= TIEMPO_TIMEOUT) {
+        CambiarEstado(MOSTRANDO_HORA);
+    }
+}
+
+void EstadoAjustarHorasAlarma(void) {
+    switch (ObtenerEvento()) {
+    case F3: {
+        DecrementarHoras(hora_temporal);
+        contador_inactividad = 0;
+        break;
+    }
+    case F4: {
+        IncrementarHoras(hora_temporal);
+        contador_inactividad = 0;
+        break;
+    }
+    case ACEPTAR: {
+        ClockSetupAlarm(reloj, hora_temporal);
+        CambiarEstado(MOSTRANDO_HORA);
+        break;
+    }
+    case CANCELAR: {
+        CambiarEstado(MOSTRANDO_HORA);
+        break;
+    }
+    default: {
+        break;
+    }
+    }
+    if (contador_inactividad >= TIEMPO_TIMEOUT) {
+        CambiarEstado(MOSTRANDO_HORA);
+    }
+}
+
+void EstadoAlarma(void) {
+    switch (ObtenerEvento()) {
+    case ACEPTAR: {
+        ClockPostponeAlarm(reloj, 5);
+        CambiarEstado(MOSTRANDO_HORA);
+        break;
+    }
+    case CANCELAR: {
+        alarma_cancelada = true;
+        CambiarEstado(MOSTRANDO_HORA);
+        break;
+    }
+    default: {
+        break;
+    }
+    }
+    if (contador_inactividad >= 60000) {
+        CambiarEstado(MOSTRANDO_HORA);
+    }
+}
+
+void CambiarEstado(estado_t nuevo_estado) {
+    if (estado_actual == nuevo_estado) {
+        return;
+    }
+
+    DigitalOutputDeactivate(placa->buzzer);
+    DisplayFlashDigits(placa->display, 0, 0, 0);
+
+    SetPunto(0, false);
+    SetPunto(1, false);
+    SetPunto(2, false);
+    SetPunto(3, false);
+
+    if (nuevo_estado == MOSTRANDO_HORA && ClockGetAlarmEnabled(reloj)) {
+        SetPunto(3, true);
+    }
+
+    estado_actual = nuevo_estado;
+    contador_inactividad = 0;
+
+    switch (nuevo_estado) {
+    case RELOJ_SIN_CONFIGURAR:
+        SetPunto(0, true);
+        SetPunto(1, true);
+        SetPunto(2, true);
+        SetPunto(3, true);
+        DisplayFlashDigits(placa->display, 0, 3, 250);
+        break;
+    case MOSTRANDO_HORA:
+        DisplayFlashDigits(placa->display, 0, 0, 0);
+        break;
+    case AJUSTANDO_MINUTOS_RELOJ:
+        DisplayFlashDigits(placa->display, 2, 3, 250);
+        break;
+    case AJUSTANDO_HORAS_RELOJ:
+        DisplayFlashDigits(placa->display, 0, 1, 250);
+        break;
+    case AJUSTANDO_MINUTOS_ALARMA:
+    case AJUSTANDO_HORAS_ALARMA:
+        SetPunto(0, true);
+        SetPunto(1, true);
+        SetPunto(2, true);
+        SetPunto(3, true);
+        if (nuevo_estado == AJUSTANDO_MINUTOS_ALARMA) {
+            DisplayFlashDigits(placa->display, 2, 3, 250);
+        } else {
+            DisplayFlashDigits(placa->display, 0, 1, 250);
+        }
+        break;
+    case ALARMA:
+        DigitalOutputActivate(placa->buzzer);
+        DisplayFlashDigits(placa->display, 0, 3, 100);
+        break;
+    }
+}
+
+evento_t ObtenerEvento(void) {
+    evento_t evento;
+    evento = evento_actual;
+    evento_actual = NINGUNO;
+    if (evento == NINGUNO) {
+        if (DigitalInputHasActivated(placa->f3)) {
+            return F3;
+        }
+        if (DigitalInputHasActivated(placa->f4)) {
+            return F4;
+        }
+        if (DigitalInputHasActivated(placa->aceptar)) {
+            return ACEPTAR;
+        }
+        if (DigitalInputHasActivated(placa->cancelar)) {
+            return CANCELAR;
+        }
+    }
+    return evento;
+}
+
+void CopiarHoraActual(void) {
+    ClockGetCurrentTime(reloj, hora_temporal);
+    hora_temporal[4] = 0;
+    hora_temporal[5] = 0;
 }
 
 void IncrementarMinutos(hora_t hora) {
     hora[3]++;
     if (hora[3] > 9) {
-        hora[2]++;
         hora[3] = 0;
-        if (hora[2] > 5) {
-            hora[2] = 0;
-        }
+        hora[2]++;
+    }
+    if (hora[2] > 5) {
+        hora[2] = 0;
+        IncrementarHoras(hora);
     }
 }
 
@@ -135,6 +551,7 @@ void DecrementarMinutos(hora_t hora) {
         hora[3] = 9;
         if (hora[2] == 0) {
             hora[2] = 5;
+            DecrementarHoras(hora);
         } else {
             hora[2]--;
         }
@@ -168,120 +585,34 @@ void DecrementarHoras(hora_t hora) {
     }
 }
 
+void ManejadorAlarma(bool estado) {
+    if (estado && !alarma_cancelada) {
+        alarma_sonando = true;
+    }
+}
+
+void SetPunto(uint8_t digito, bool encendido) {
+    if (estado_puntos[digito] != encendido) {
+        DisplayToggleDots(placa->display, digito, digito);
+        estado_puntos[digito] = encendido;
+    }
+}
+
 /* === Public function implementation ========================================================== */
 
 int main(void) {
-
     placa = BoardCreate();
-
     reloj = ClockCreate(TICK_RATE_HZ, ManejadorAlarma);
-
     BoardSysTickInit(TICK_RATE_HZ);
-    hora_t hora_mostrar;
-    uint8_t digitos_display[4] = {0, 0, 0, 0};
-
-    DisplayWriteBCD(placa->display, digitos_display, sizeof(digitos_display));
+    DisplayWriteBCD(placa->display, display, 4);
+    SetPunto(0, true);
+    SetPunto(1, true);
+    SetPunto(2, true);
+    SetPunto(3, true);
     DisplayFlashDigits(placa->display, 0, 3, 250);
-
     while (1) {
-        // Gestion inicial de la pantalla
-        if (modo_actual == MOSTRANDO_HORA) {
-            if (ClockGetCurrentTime(reloj, hora_mostrar)) {
-                digitos_display[0] = hora_mostrar[0];
-                digitos_display[1] = hora_mostrar[1];
-                digitos_display[2] = hora_mostrar[2];
-                digitos_display[3] = hora_mostrar[3];
-                DisplayWriteBCD(placa->display, digitos_display, sizeof(digitos_display));
-            }
-        } else if (modo_actual == AJUSTANDO_MINUTOS_RELOJ || modo_actual == AJUSTANDO_HORAS_RELOJ) {
-            digitos_display[0] = hora_temporal[0];
-            digitos_display[1] = hora_temporal[1];
-            digitos_display[2] = hora_temporal[2];
-            digitos_display[3] = hora_temporal[3];
-            DisplayWriteBCD(placa->display, digitos_display, sizeof(digitos_display));
-        }
-        // Maquina de estados finitos
-        switch (modo_actual) {
-        case RELOJ_SIN_CONFIGURAR: {
-            if (contador_tecla_f1 >= TICKS_3_SEG) {
-                modo_actual = AJUSTANDO_MINUTOS_RELOJ;
-                contador_tecla_f1 = 0;
-                contador_inactividad = 0;
-                ClockGetCurrentTime(reloj, hora_temporal);
-                DisplayFlashDigits(placa->display, 2, 3, frecuencia);
-            }
-            break;
-        }
-        case MOSTRANDO_HORA: {
-            if (contador_tecla_f1 >= TICKS_3_SEG) {
-                modo_actual = AJUSTANDO_MINUTOS_RELOJ;
-                contador_tecla_f1 = 0;
-                contador_inactividad = 0;
-                ClockGetCurrentTime(reloj, hora_temporal);
-                DisplayFlashDigits(placa->display, 2, 3, frecuencia);
-            }
-            break;
-        }
-        case AJUSTANDO_MINUTOS_RELOJ: {
-            if (DigitalInputHasActivated(placa->f4)) {
-                IncrementarMinutos(hora_temporal);
-                contador_inactividad = 0;
-            }
-            if (DigitalInputHasActivated(placa->f3)) {
-                DecrementarMinutos(hora_temporal);
-                contador_inactividad = 0;
-            }
-            if (DigitalInputHasActivated(placa->aceptar)) {
-                modo_actual = AJUSTANDO_HORAS_RELOJ;
-                contador_inactividad = 0;
-                DisplayFlashDigits(placa->display, 0, 1, frecuencia);
-            }
-            if (contador_inactividad >= TICKS_30_SEG || DigitalInputHasActivated(placa->cancelar)) {
-                DisplayFlashDigits(placa->display, 0, 0, 0);
-                if (ClockGetCurrentTime(reloj, hora_mostrar)) {
-                    modo_actual = MOSTRANDO_HORA;
-                } else {
-                    modo_actual = RELOJ_SIN_CONFIGURAR;
-                    DisplayFlashDigits(placa->display, 0, 3, frecuencia);
-                }
-            }
-            break;
-        }
-        case AJUSTANDO_HORAS_RELOJ: {
-            if (DigitalInputHasActivated(placa->f4)) {
-                IncrementarHoras(hora_temporal);
-                contador_inactividad = 0;
-            }
-            if (DigitalInputHasActivated(placa->f3)) {
-                DecrementarHoras(hora_temporal);
-                contador_inactividad = 0;
-            }
-            if (DigitalInputHasActivated(placa->aceptar)) {
-                ClockGetCurrentTime(reloj, hora_temporal);
-                modo_actual = MOSTRANDO_HORA;
-                DisplayFlashDigits(placa->display, 0, 0, 0);
-            }
-            if (contador_inactividad >= TICKS_30_SEG || DigitalInputHasActivated(placa->cancelar)) {
-                DisplayFlashDigits(placa->display, 0, 0, 0);
-                if (ClockGetCurrentTime(reloj, hora_mostrar)) {
-                    modo_actual = MOSTRANDO_HORA;
-                } else {
-                    modo_actual = RELOJ_SIN_CONFIGURAR;
-                    DisplayFlashDigits(placa->display, 0, 3, frecuencia);
-                }
-            }
-            break;
-        }
-        case AJUSTANDO_MINUTOS_ALARMA: {
-            break;
-        }
-        case AJUSTANDO_HORAS_ALARMA: {
-            break;
-        }
-        case ALARMA_SONANDO: {
-            break;
-        }
-        }
+        ActualizarFSM();
+        ActualizarDisplay();
     }
     return 0;
 }
