@@ -150,6 +150,13 @@ bool ClockGetAlarmEnabled(clock_t self);
  */
 void ClockPostponeAlarm(clock_t self, uint8_t minutos);
 
+/**
+ * @brief Omite la alarma para el día actual
+ * 
+ * @param self Puntero a la instancia del reloj
+ */
+void ClockSkipTodayAlarm(clock_t self);
+
 /* === End of conditional blocks =================================================================================== */
 
 #ifdef __cplusplus

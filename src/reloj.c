@@ -73,6 +73,7 @@ struct clock_s {
     bool alarm_enabled;          /**< Bandera que indica si la alarma esta habilitada */
     bool is_postponed;           /**< Bandera que indica si la alarma se encuentra en modo snooze */
     clock_event_t alarm_handler; /**< Puntero a la función de callback para ejecutar la alarma */
+    bool skip_today;             /**< Bandera que indica si se debe saltar el día actual al posponer la alarma */
 };
 
 /* === Private function declarations =========================================================== */
@@ -167,6 +168,7 @@ clock_t ClockCreate(unsigned int ticks_per_second, clock_event_t alarm_handler) 
     self->alarm_enabled = false;
     self->is_postponed = false;
     self->postpone_time = 0;
+    self->skip_today = false;
     return self;
 }
 
@@ -197,7 +199,12 @@ void ClockNewTick(clock_t self) {
     if (self->current_time >= SECONDS_PER_DAY) {
         self->current_time = 0;
     }
-    if (self->alarm_enabled && self->alarm_handler != NULL) {
+
+    if (self->current_time == 0) {
+        self->skip_today = false;
+    }
+
+    if (self->alarm_enabled && !self->skip_today && self->alarm_handler != NULL) {
         if (self->current_time == self->alarm_time) {
             self->alarm_handler(true);
             self->is_postponed = false;
@@ -236,4 +243,10 @@ void ClockPostponeAlarm(clock_t self, uint8_t minutos) {
     }
     self->is_postponed = true;
 }
+
+void ClockSkipTodayAlarm(clock_t self) {
+    self->skip_today = true;
+    self->is_postponed = false;
+}
+
 /* === End of documentation ==================================================================== */

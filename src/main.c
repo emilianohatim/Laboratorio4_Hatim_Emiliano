@@ -40,16 +40,16 @@ SPDX-License-Identifier: MIT
 
 #include "bsp.h"
 #include "reloj.h"
-#include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
 
 /* === Macros definitions ====================================================================== */
 
-#define TICK_RATE_HZ    1000 /**< frecuencia del systick */
-#define TIEMPO_F1_LARGO 3000
-#define TIEMPO_F2_LARGO 3000
-#define TIEMPO_TIMEOUT  30000
+#define TICK_RATE_HZ    1000  /**< frecuencia del systick */
+#define TIEMPO_F1_LARGO 3000  /**< Tiempo para evento F1 largo */
+#define TIEMPO_F2_LARGO 3000  /**< Tiempo para evento F2 largo */
+#define TIEMPO_TIMEOUT  30000 /**< Tiempo para evento de timeout */
+#define ANTIRREBOTE     200    /**< Tiempo de antirrebote para las teclas */
 
 /* === Private data type declarations ========================================================== */
 
@@ -63,70 +63,171 @@ typedef enum {
     ALARMA                    /**< Suena el buzzer esperando aceptar o cancelar */
 } estado_t;
 
-typedef enum { NINGUNO, F1_LARGA, F2_LARGA, F3, F4, ACEPTAR, CANCELAR } evento_t;
+typedef enum { 
+    NINGUNO,  /**< No evento */
+    F1_LARGA, /** F1 Presionado por 3 segundos*/
+    F2_LARGA, /** F2 Presionado por 3 segundos*/
+    F3,       /** F3 Pulsado */
+    F4,       /** F4 Pulsado */
+    ACEPTAR,  /** Aceptar */
+    CANCELAR  /** Cancelar */
+} evento_t;
 
 /* === Private variable declarations =========================================================== */
 
 /* === Private function declarations =========================================================== */
 
+/** 
+ * @brief Manejador de la interrupción del SysTick
+ * 
+ */
+void SysTick_Handler(void);
+
+/**
+ * @brief Máquina de estados finitos para actualizar el display
+ * 
+ */
 void ActualizarDisplay(void);
 
+/**
+ * @brief Máquina de estados finitos para actualizar el estado del reloj
+ * 
+ */
 void ActualizarFSM(void);
 
+/**
+ * @brief Muestra la hora en el display
+ * 
+ */
 void MostrarHora(void);
 
+/**
+ * @brief Estado inicial del reloj
+ * 
+ */
 void EstadoSinConfigurar(void);
 
+/**
+ * @brief Estado para mostrar la hora
+ * 
+ */
 void EstadoMostrarHora(void);
 
+/**
+ * @brief Estado para ajustar los minutos del reloj
+ * 
+ */
 void EstadoAjustarMinutos(void);
 
+/**
+ * @brief Estado para ajustar las horas del reloj
+ * 
+ */
 void EstadoAjustarHoras(void);
 
+/**
+ * @brief Estado para ajustar los minutos de la alarma
+ * 
+ */
 void EstadoAjustarMinutosAlarma(void);
 
+/**
+ * @brief Estado para ajustar las horas de la alarma
+ * 
+ */
 void EstadoAjustarHorasAlarma(void);
 
+/**
+ * @brief Estado para cuando se activa la alarma
+ * 
+ */
 void EstadoAlarma(void);
 
+/**
+ * @brief Cambia el estado actual de la máquina de estados
+ * 
+ * @param nuevo_estado El nuevo estado a establecer
+ */
 void CambiarEstado(estado_t nuevo_estado);
 
+/**
+ * @brief Obtiene el evento actual
+ * 
+ * @return El evento actual
+ */
 evento_t ObtenerEvento(void);
 
+/**
+ * @brief Copia la hora actual a la hora temporal
+ * 
+ */
 void CopiarHoraActual(void);
 
+/**
+ * @brief Incrementa los minutos de la hora
+ * 
+ * @param hora Hora a incrementar los minutos
+ */
 void IncrementarMinutos(hora_t hora);
 
+/**
+ * @brief Decrementa los minutos de la hora
+ * 
+ * @param hora Hora a decrementar los minutos
+ */
 void DecrementarMinutos(hora_t hora);
 
+/**
+ * @brief Incrementa las horas de la hora
+ * 
+ * @param hora Hora a incrementar las horas
+ */
 void IncrementarHoras(hora_t hora);
 
+/**
+ * @brief Decrementa las horas de la hora
+ * 
+ * @param hora Hora a decrementar las horas
+ */
 void DecrementarHoras(hora_t hora);
 
+/**
+ * @brief Funcion de callback para manejar la alarma
+ * 
+ * @param estado Estado de la alarma (true si está sonando, false si no)
+ */
 void ManejadorAlarma(bool estado);
 
+/**
+ * @brief Establece el estado de un punto en el display
+ * 
+ * @param digito Dígito del display
+ * @param encendido Estado del punto (true si está encendido, false si está apagado)
+ */
 void SetPunto(uint8_t digito, bool encendido);
 
 /* === Public variable definitions ============================================================= */
 
-board_t placa;
-clock_t reloj;
-estado_t estado_actual = RELOJ_SIN_CONFIGURAR;
-evento_t evento_actual = NINGUNO;
+board_t placa;                                 /**< Estructura de datos para la placa */
+clock_t reloj;                                 /**< Estructura de datos para el reloj */
+estado_t estado_actual = RELOJ_SIN_CONFIGURAR; /**< Estado actual de la máquina de estados */
+evento_t evento_actual = NINGUNO;              /**< Evento actual de la máquina de estados */
 
-uint32_t contador_f1 = 0;
-uint32_t contador_f2 = 0;
-uint32_t contador_inactividad = 0;
-uint16_t contador_parpadeo = 0;
-uint8_t display[4];
+uint32_t contador_f1 = 0;           /**< Contador para la tecla F1 */
+uint32_t contador_f2 = 0;           /**< Contador para la tecla F2 */
+uint32_t contador_inactividad = 0;  /**< Contador para el tiempo de inactividad */
+uint16_t contador_parpadeo = 0;     /**< Contador para el parpadeo */
+uint8_t display[4];                 /**< Array para almacenar los valores del display */
+uint8_t rebote_aceptar = 0;         /**< Contador para el antirrebote de la tecla ACEPTAR */
+uint8_t rebote_cancelar = 0;        /**< Contador para el antirrebote de la tecla CANCELAR */
+uint8_t rebote_f3 = 0;              /**< Contador para el antirrebote de la tecla F3 */
+uint8_t rebote_f4 = 0;              /**< Contador para el antirrebote de la tecla F4 */
 
-bool estado_puntos[4] = {false, false, false, false};
-bool alarma_cancelada = false;
-bool alarma_sonando = false;
+bool estado_puntos[4] = {false, false, false, false}; /**< Estados de los puntos del display */ 
+bool alarma_sonando = false;                          /**< Estado de la alarma (true si está sonando, false si no) */ 
 
-hora_t hora_actual;
-hora_t hora_temporal = {0, 0, 0, 0, 0, 0};
-hora_t hora_alarma;
+hora_t hora_actual;                         /**< Estructura de datos para la hora actual */
+hora_t hora_temporal = {0, 0, 0, 0, 0, 0};  /**< Estructura de datos para la hora temporal */
 
 /* === Private variable definitions ============================================================ */
 
@@ -166,6 +267,19 @@ void SysTick_Handler(void) {
         if (estado_actual == MOSTRANDO_HORA) {
             SetPunto(1, !estado_puntos[1]);
         }
+    }
+
+    if (rebote_aceptar){
+        rebote_aceptar--;
+    }
+    if (rebote_cancelar){
+        rebote_cancelar--;
+    }
+    if (rebote_f3){
+        rebote_f3--;
+    }
+    if (rebote_f4){
+        rebote_f4--;
     }
 
     contador_inactividad++;
@@ -245,10 +359,6 @@ void MostrarHora(void) {
         display[2] = hora_actual[2];
         display[3] = hora_actual[3];
         DisplayWriteBCD(placa->display, display, sizeof(display));
-    }
-    if (hora_actual[0] == 0 && hora_actual[1] == 0 && hora_actual[2] == 0 && hora_actual[3] == 0 &&
-        hora_actual[4] == 0 && hora_actual[5] == 0) {
-        alarma_cancelada = false;
     }
 }
 
@@ -414,6 +524,9 @@ void EstadoAjustarHorasAlarma(void) {
     }
     case ACEPTAR: {
         ClockSetupAlarm(reloj, hora_temporal);
+        if (!ClockGetAlarmEnabled(reloj)) {
+            ClockToggleAlarm(reloj);
+        }
         CambiarEstado(MOSTRANDO_HORA);
         break;
     }
@@ -438,7 +551,7 @@ void EstadoAlarma(void) {
         break;
     }
     case CANCELAR: {
-        alarma_cancelada = true;
+        ClockSkipTodayAlarm(reloj);
         CambiarEstado(MOSTRANDO_HORA);
         break;
     }
@@ -446,7 +559,7 @@ void EstadoAlarma(void) {
         break;
     }
     }
-    if (contador_inactividad >= 60000) {
+    if (contador_inactividad >= TIEMPO_TIMEOUT) {
         CambiarEstado(MOSTRANDO_HORA);
     }
 }
@@ -512,16 +625,20 @@ evento_t ObtenerEvento(void) {
     evento = evento_actual;
     evento_actual = NINGUNO;
     if (evento == NINGUNO) {
-        if (DigitalInputHasActivated(placa->f3)) {
+        if (DigitalInputHasActivated(placa->f3) && rebote_f3 == 0) {
+            rebote_f3 = ANTIRREBOTE;
             return F3;
         }
-        if (DigitalInputHasActivated(placa->f4)) {
+        if (DigitalInputHasActivated(placa->f4) && rebote_f4 == 0) {
+            rebote_f4 = ANTIRREBOTE;
             return F4;
         }
-        if (DigitalInputHasActivated(placa->aceptar)) {
+        if (DigitalInputHasActivated(placa->aceptar) && rebote_aceptar == 0) {
+            rebote_aceptar = ANTIRREBOTE;
             return ACEPTAR;
         }
-        if (DigitalInputHasActivated(placa->cancelar)) {
+        if (DigitalInputHasActivated(placa->cancelar) && rebote_cancelar == 0) {
+            rebote_cancelar = ANTIRREBOTE;
             return CANCELAR;
         }
     }
@@ -542,7 +659,6 @@ void IncrementarMinutos(hora_t hora) {
     }
     if (hora[2] > 5) {
         hora[2] = 0;
-        IncrementarHoras(hora);
     }
 }
 
@@ -551,7 +667,6 @@ void DecrementarMinutos(hora_t hora) {
         hora[3] = 9;
         if (hora[2] == 0) {
             hora[2] = 5;
-            DecrementarHoras(hora);
         } else {
             hora[2]--;
         }
@@ -586,7 +701,7 @@ void DecrementarHoras(hora_t hora) {
 }
 
 void ManejadorAlarma(bool estado) {
-    if (estado && !alarma_cancelada) {
+    if(estado){
         alarma_sonando = true;
     }
 }
